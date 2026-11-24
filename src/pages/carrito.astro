@@ -633,7 +633,11 @@ const postal = tienda.pais.codigoPostal;
         const destino = r.payment_result?.redirect_url ?? '';
         const esPaginaPropia = !destino || /order-received|pedido-recibido/.test(destino);
         if (!esPaginaPropia) {
-          location.href = destino;
+          enviar.textContent = 'Abriendo el pago seguro…';
+          // Afinia: directo a su página segura, sin pasar por la página de pago de WordPress.
+          // Si algo falla, se usa la página de WordPress (el pago igual se puede completar ahí).
+          if (metodo === 'afinia_gateway') await pagarConAfinia(destino).catch(() => (location.href = destino));
+          else location.href = destino;
           return;
         }
         avisarEncabezado(0);
@@ -657,6 +661,76 @@ const postal = tienda.pais.codigoPostal;
         enviar.textContent = 'REALIZAR PAGO';
       }
     });
+
+    // ---------- Afinia directo ----------
+    // Mismos datos que la página de pago de WordPress le pasa al script de Afinia; los entrega el plugin
+    // wordpress/plugins/sira-afinia-astro.php solo con la clave del pedido. La tarjeta se escribe en la
+    // página segura de Afinia; el sitio nunca la ve.
+    const cargarScript = (src: string, listo: () => unknown) =>
+      new Promise<void>((ok, mal) => {
+        if (listo()) return ok();
+        const s = document.createElement('script');
+        s.src = src;
+        s.onload = () => (listo() ? ok() : mal(new Error('script')));
+        s.onerror = () => mal(new Error('script'));
+        document.head.append(s);
+      });
+
+    async function pagarConAfinia(destino: string) {
+      const u = new URL(destino);
+      const id = u.pathname.match(/order-pay\/(\d+)/)?.[1] ?? u.searchParams.get('order-pay');
+      const key = u.searchParams.get('key');
+      if (!id || !key) throw new Error('sin datos del pedido');
+      const wp = raiz.dataset.api!.replace(/\/wc\/store\/v1\/?$/, '');
+      const r = await fetch(`${wp}/sira/v1/afinia/${id}?key=${encodeURIComponent(key)}`);
+      if (!r.ok) throw new Error(`Afinia ${r.status}`);
+      const c = (await r.json()) as {
+        apikey: string; email: string; moneda: string; monto: string;
+        referencia: string; referencia2: string; script: string;
+      };
+      type Afinia = ((cb: (res: { Error?: string; Url?: string }[]) => void) => void) & { setup: Record<string, string> };
+      const w = window as unknown as { jQuery?: { fn?: { AFINIA_PaymentGateway?: Afinia } } };
+      // El script de Afinia es un plugin de jQuery.
+      await cargarScript('https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js', () => w.jQuery);
+      await cargarScript(c.script, () => w.jQuery?.fn?.AFINIA_PaymentGateway);
+      const pg = w.jQuery!.fn!.AFINIA_PaymentGateway!;
+      Object.assign(pg.setup, {
+        Apikey: c.apikey,
+        Email: c.email,
+        Currency: c.moneda,
+        Totalamount: c.monto,
+        Reference: c.referencia,
+        Reference2: c.referencia2,
+        Version: 'WC2.0',
+      });
+      const url = await new Promise<string>((ok, mal) => {
+        const t = setTimeout(() => mal(new Error('Afinia no respondió')), 20000);
+        pg((res) => {
+          clearTimeout(t);
+          const x = res?.[0];
+          if (x?.Url) ok(x.Url);
+          else mal(new Error(x?.Error || 'Afinia no devolvió la página de pago'));
+        });
+      });
+      avisarEncabezado(0);
+      location.replace(url);
+    }
+
+    // ---------- regreso desde Afinia ----------
+    // El plugin de WordPress trae al cliente aquí con ?pedido=<n>&estado=ok|<estado>.
+    const regreso = new URLSearchParams(location.search);
+    if (regreso.get('pedido')) {
+      const n = regreso.get('pedido');
+      const ok = regreso.get('estado') === 'ok';
+      avisarEncabezado(0);
+      $('[data-gracias-titulo]').textContent = ok ? `Gracias, pedido #${n}` : `El pago del pedido #${n} no se completó`;
+      $('[data-gracias-texto]').textContent = ok
+        ? 'Su pago con tarjeta fue aprobado. Le enviamos la confirmación por correo.'
+        : 'Afinia no confirmó el pago. Puede intentarlo de nuevo desde su carrito o escribirnos y le ayudamos.';
+      vista('gracias');
+      history.replaceState(null, '', location.pathname);
+      return;
+    }
 
     // ---------- inicio ----------
     // Con sesión, se llenan los campos con los datos guardados de la cuenta.
