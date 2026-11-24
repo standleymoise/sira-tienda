@@ -1,0 +1,325 @@
+---
+// Tarjeta de producto SIRA, con datos reales de WooCommerce.
+//   variante «lista»  (Figma: «Article» 400×594 de Novedades/Tienda/Reversibles): foto 3:4, favorito
+//                     redondo, «Cara A / Cara B» en reversibles, nombre 18 px y precio + «REVERSIBLE».
+//   variante «inicio» (Figma: «Nuevas piezas» 302×540): favorito cuadrado, «REVERSIBLE» arriba del
+//                     nombre (22 px) y precio debajo.
+// «Cara A / Cara B» cambia entre la 1.ª y la 2.ª foto del producto (las dos caras de la prenda).
+// Los atributos data-* sirven para filtrar en el navegador (tipo, colección, reversible, género).
+import { Image } from 'astro:assets';
+import type { Producto } from '../../data/tienda';
+import { claveFavorito } from '../../data/tienda';
+import { rutas } from '../../data/rutas';
+
+interface Props {
+  producto: Producto;
+  variante?: 'lista' | 'inicio';
+  /** Primeras tarjetas de la página: la foto se carga de inmediato. */
+  prioridad?: boolean;
+  /** Ancho de la tarjeta en escritorio (px), para descargar la foto del tamaño justo. */
+  ancho?: number;
+}
+const { producto: p, variante = 'lista', prioridad = false } = Astro.props;
+const caras = p.reversible && p.imagenes.length >= 2;
+const fotos = caras ? p.imagenes.slice(0, 2) : p.imagenes.slice(0, 1);
+const ancho = Astro.props.ancho ?? (variante === 'inicio' ? 302 : 400);
+---
+<article
+  class:list={['tarjeta', `tarjeta-${variante}`]}
+  data-tarjeta
+  data-id={p.id}
+  data-fav={claveFavorito(p)}
+  data-categorias={p.categoriasSlug.join(' ')}
+  data-reversible={p.reversible ? '1' : '0'}
+  data-genero={p.genero}
+  data-nombre={p.nombre.toLowerCase()}
+>
+  <div class="foto">
+    <a class="foto-enlace" href={rutas.producto(p.slug)} tabindex="-1" aria-hidden="true">
+      {fotos.length > 0 ? (
+        fotos.map((f, i) => (
+          <Image
+            class:list={['foto-img', { activa: i === 0 }]}
+            data-cara={i === 0 ? 'a' : 'b'}
+            src={f.src}
+            alt={i === 0 ? f.alt : ''}
+            inferSize
+            format="webp"
+            widths={[ancho, ancho * 2]}
+            sizes={variante === 'inicio' ? `(max-width: 760px) 46vw, ${ancho}px` : `(max-width: 760px) 92vw, (max-width: 1100px) 45vw, ${ancho}px`}
+            loading={prioridad && i === 0 ? 'eager' : 'lazy'}
+          />
+        ))
+      ) : (
+        <span class="sin-foto">{p.nombre}</span>
+      )}
+    </a>
+    <button class="favorito" type="button" data-favorito aria-pressed="false" aria-label={`Guardar ${p.nombre} en favoritos`}>
+      <svg viewBox="0 0 14 14" aria-hidden="true"><path d="M1.17 5.54c0-.65.2-1.28.56-1.82a3.21 3.21 0 0 1 4.44-.81c.32.22.6.5.83.83a3.21 3.21 0 0 1 5.83 1.8c0 1.34-.88 2.35-1.75 3.22L7.88 11.9a1.17 1.17 0 0 1-1.66.06L3 8.76c-.88-.87-1.83-1.87-1.83-3.22z" /></svg>
+    </button>
+    {caras && variante === 'lista' && (
+      <div class="caras" role="group" aria-label="Ver cara de la prenda">
+        <button type="button" class="cara activa" data-ver-cara="a" aria-pressed="true">Cara A</button>
+        <span aria-hidden="true">/</span>
+        <button type="button" class="cara" data-ver-cara="b" aria-pressed="false">Cara B</button>
+      </div>
+    )}
+  </div>
+  {variante === 'inicio' ? (
+    <div class="datos">
+      {p.reversible && <p class="etiqueta-rev">Reversible</p>}
+      <h3 class="nombre serif"><a href={rutas.producto(p.slug)}>{p.nombre}</a></h3>
+      <p class="precio">{p.precio}</p>
+    </div>
+  ) : (
+    <div class="datos">
+      <h3 class="nombre serif"><a href={rutas.producto(p.slug)}>{p.nombre}</a></h3>
+      <div class="fila-precio">
+        <p class="precio">
+          {p.precio}
+          {p.precioAntes && <s>{p.precioAntes}</s>}
+        </p>
+        {p.reversible && <p class="etiqueta-rev">Reversible</p>}
+      </div>
+      {!p.enStock && <p class="agotado">Agotado</p>}
+    </div>
+  )}
+</article>
+
+<script>
+  import { leerFavoritos, guardarFavoritos } from '../../scripts/tienda-api';
+
+  // Favoritos (compartidos con /favoritos) y cambio de cara A/B, para todas las tarjetas de la página.
+  const favs = leerFavoritos();
+  document.querySelectorAll<HTMLElement>('[data-tarjeta]').forEach((t) => {
+    const clave = t.dataset.fav!;
+    const btn = t.querySelector<HTMLButtonElement>('[data-favorito]')!;
+    const pintar = () => {
+      const si = favs.has(clave);
+      btn.setAttribute('aria-pressed', String(si));
+      btn.classList.toggle('activo', si);
+    };
+    pintar();
+    btn.addEventListener('click', () => {
+      if (favs.has(clave)) favs.delete(clave);
+      else favs.add(clave);
+      guardarFavoritos(favs);
+      pintar();
+    });
+
+    t.querySelectorAll<HTMLButtonElement>('[data-ver-cara]').forEach((b) =>
+      b.addEventListener('click', () => {
+        const cara = b.dataset.verCara;
+        t.querySelectorAll<HTMLElement>('[data-cara]').forEach((img) => img.classList.toggle('activa', img.dataset.cara === cara));
+        t.querySelectorAll<HTMLButtonElement>('[data-ver-cara]').forEach((x) => {
+          const si = x === b;
+          x.classList.toggle('activa', si);
+          x.setAttribute('aria-pressed', String(si));
+        });
+      }),
+    );
+  });
+</script>
+
+<style>
+  .tarjeta {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+  .foto {
+    position: relative;
+    aspect-ratio: 3 / 4;
+    overflow: hidden;
+    background: var(--arena);
+  }
+  .foto-enlace {
+    display: block;
+    width: 100%;
+    height: 100%;
+    text-decoration: none;
+  }
+  .foto :global(.foto-img) {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0;
+    transition:
+      opacity 0.35s ease,
+      transform 0.6s ease;
+  }
+  .foto :global(.foto-img.activa) {
+    opacity: 1;
+  }
+  .tarjeta:hover .foto :global(.foto-img) {
+    transform: scale(1.02);
+  }
+  .sin-foto {
+    display: grid;
+    place-items: center;
+    height: 100%;
+    padding: 20px;
+    font-family: var(--font-alt);
+    font-size: 20px;
+    text-align: center;
+    color: var(--gris);
+  }
+  .favorito {
+    position: absolute;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    border: 0;
+    cursor: pointer;
+    color: var(--tinta-fuerte);
+  }
+  .favorito svg {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.06;
+    stroke-linejoin: round;
+  }
+  .favorito.activo svg {
+    fill: currentColor;
+  }
+  .tarjeta-lista .favorito {
+    top: 14px;
+    right: 14px;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: rgba(253, 250, 246, 0.8);
+    backdrop-filter: blur(8px);
+  }
+  .tarjeta-lista .favorito svg {
+    width: 14px;
+    height: 14px;
+  }
+  .tarjeta-inicio .favorito {
+    top: 10px;
+    right: 8px;
+    width: 25px;
+    height: 25px;
+    background: var(--crema);
+  }
+  .tarjeta-inicio .favorito svg {
+    width: 17px;
+    height: 17px;
+  }
+  .caras {
+    position: absolute;
+    left: 12px;
+    bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    background: rgba(253, 250, 246, 0.85);
+    backdrop-filter: blur(8px);
+    font-size: 10px;
+    line-height: 15px;
+    letter-spacing: 1.6px;
+  }
+  .caras span {
+    color: var(--linea);
+  }
+  .cara {
+    padding: 0;
+    border: 0;
+    background: none;
+    font: inherit;
+    font-weight: 400;
+    letter-spacing: inherit;
+    color: var(--gris);
+    cursor: pointer;
+  }
+  .cara.activa {
+    font-weight: 500;
+    color: var(--tinta-fuerte);
+  }
+  .nombre {
+    margin: 0;
+    color: var(--tinta-fuerte);
+  }
+  .nombre a {
+    color: inherit;
+    text-decoration: none;
+  }
+  .precio {
+    margin: 0;
+    font-size: 12px;
+  }
+  .precio s {
+    margin-left: 8px;
+    color: var(--gris);
+    opacity: 0.7;
+    white-space: nowrap;
+  }
+  .etiqueta-rev {
+    margin: 0;
+    text-transform: uppercase;
+  }
+  .agotado {
+    margin: 4px 0 0;
+    font-size: 10px;
+    letter-spacing: 1.8px;
+    text-transform: uppercase;
+    color: var(--gris);
+  }
+
+  /* lista */
+  .tarjeta-lista .datos {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding-top: 16px;
+  }
+  .tarjeta-lista .nombre {
+    font-size: 18px;
+    line-height: 24.8px;
+  }
+  .fila-precio {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 4px 12px;
+  }
+  .tarjeta-lista .precio {
+    line-height: 16px;
+    letter-spacing: 0.3px;
+    color: var(--gris);
+  }
+  .tarjeta-lista .etiqueta-rev {
+    font-size: 10px;
+    line-height: 13.3px;
+    letter-spacing: 1.8px;
+    color: var(--oro);
+  }
+
+  /* inicio */
+  .tarjeta-inicio .datos {
+    padding-top: 18px;
+  }
+  .tarjeta-inicio .etiqueta-rev {
+    font-size: 9px;
+    font-weight: 500;
+    line-height: 15.3px;
+    color: var(--tinta);
+  }
+  .tarjeta-inicio .nombre {
+    /* Dos líneas fijas: el precio queda a la misma altura en todas las tarjetas (como el Figma) */
+    min-height: 48.4px;
+    margin-top: 9px;
+    font-size: 22px;
+    line-height: 24.2px;
+    color: var(--tinta);
+  }
+  .tarjeta-inicio .precio {
+    margin-top: 8.6px;
+    line-height: 20.4px;
+    color: var(--tinta);
+  }
+</style>

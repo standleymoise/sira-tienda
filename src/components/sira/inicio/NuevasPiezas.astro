@@ -1,0 +1,110 @@
+---
+// Nuevas piezas (Figma: 147:5132, 1440×800): 4 tarjetas de productos REALES de WooCommerce.
+// Primero las de la categoría de novedades con foto; si faltan, se completan con otras piezas con foto.
+import TarjetaProducto from '../TarjetaProducto.astro';
+import type { Producto } from '../../../data/tienda';
+import { categoriaNovedades } from '../../../data/sira';
+import { rutas } from '../../../data/rutas';
+
+interface Props {
+  productos: Producto[];
+}
+const { productos } = Astro.props;
+
+const conFoto = productos.filter((p) => p.imagenes.length > 0);
+const nuevas = conFoto.filter((p) => p.categoriasSlug.includes(categoriaNovedades));
+const piezas = [...nuevas, ...conFoto.filter((p) => !nuevas.includes(p))].slice(0, 4);
+---
+<section class="nuevas" aria-labelledby="nuevas-titulo">
+  <div class="contenedor">
+    <div class="cabeza">
+      <div>
+        <p class="etiqueta">Una selección SIRA</p>
+        <h2 id="nuevas-titulo" class="titulo serif">Nuevas piezas</h2>
+      </div>
+      <a class="ver" href={rutas.productos}>Ver tienda<span aria-hidden="true">↗</span></a>
+    </div>
+    {piezas.length > 0 ? (
+      <div class="tarjetas">
+        {piezas.map((p) => <TarjetaProducto producto={p} variante="inicio" />)}
+      </div>
+    ) : (
+      <p class="vacio serif">Pronto nuevas piezas.</p>
+    )}
+  </div>
+</section>
+
+<style>
+  .nuevas {
+    padding: 82px 0 43px;
+  }
+  .cabeza {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 24px;
+  }
+  .titulo {
+    margin: 13px 0 0 -2px;
+    font-size: clamp(38px, 3.75vw, 54px);
+    line-height: 1.1;
+  }
+  .ver {
+    flex: none;
+    /* En el Figma el enlace empieza en x=1210, no pegado al margen derecho. */
+    margin: 0 clamp(0px, 4.5vw, 65px) 9px 0;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 20.4px;
+    text-decoration: none;
+    color: var(--tinta);
+  }
+  .ver span {
+    margin-left: 1.6em;
+  }
+  .ver:hover {
+    color: var(--oro);
+  }
+  .tarjetas {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 24px;
+    margin-top: 44px;
+  }
+  .vacio {
+    margin: 44px 0 0;
+    font-size: 24px;
+    color: var(--gris);
+  }
+
+  @media (max-width: 1000px) {
+    .tarjetas {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      row-gap: 40px;
+    }
+  }
+  @media (max-width: 760px) {
+    .nuevas {
+      padding: 64px 0 56px;
+    }
+    .cabeza {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 16px;
+    }
+    .ver {
+      margin: 0;
+    }
+    .tarjetas {
+      column-gap: 12px;
+      margin-top: 32px;
+    }
+    .tarjetas :global(.tarjeta-inicio .nombre) {
+      font-size: 19px;
+      line-height: 1.15;
+    }
+    .tarjetas :global(.tarjeta-inicio .precio) {
+      margin-top: 12px;
+    }
+  }
+</style>

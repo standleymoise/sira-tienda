@@ -1,0 +1,137 @@
+---
+// Nuestra historia (Figma: 147:5167, 1440×1000, fondo #f0ede6): foto 600×750 y textos de la marca
+// y de la diseñadora.
+import { Image } from 'astro:assets';
+import { rutas } from '../../../data/rutas';
+import imgTextiles from '../../../assets/sira/textiles-silueta.png';
+---
+<section class="historia" aria-labelledby="historia-titulo">
+  <div class="contenedor rejilla">
+    <div class="foto">
+      <Image
+        src={imgTextiles}
+        alt="Textiles y silueta SIRA"
+        format="webp"
+        widths={[420, 600, 900, 1200]}
+        sizes="(max-width: 860px) calc(100vw - 40px), 42vw"
+        loading="lazy"
+      />
+    </div>
+    <div class="textos">
+      <p class="etiqueta">Nuestra historia</p>
+      <h2 id="historia-titulo" class="titulo serif">Diseñar<br />con intención.</h2>
+      <p class="parrafo">
+        SIRA nace de la búsqueda de piezas únicas: mezclas inesperadas de textiles nuevos y recuperados, siluetas
+        reversibles y diseño pensado para permanecer. Espíritu costarricense con mirada global.
+      </p>
+      <a class="enlace" href={rutas.nosotros}>SIRA — Nuestra historia<span aria-hidden="true">↗</span></a>
+      <p class="etiqueta disenadora">La diseñadora</p>
+      <h3 class="nombre serif">Laura Mata</h3>
+      <p class="rol serif">Fundadora y diseñadora</p>
+      <p class="parrafo bio">
+        De su formación inicial en tecnología y la experiencia en pasarela internacional hasta sus estudios en
+        London College of Fashion, Laura Mata da forma a SIRA desde una sensibilidad íntima por los textiles y la
+        expresión personal.
+      </p>
+    </div>
+    <p class="etiqueta origen">Desde Costa Rica, con una mirada global.</p>
+  </div>
+</section>
+
+<style>
+  .historia {
+    padding: 120px 0 89px;
+    background: var(--piedra);
+  }
+  .rejilla {
+    display: grid;
+    grid-template-columns: minmax(0, 600fr) minmax(0, 560fr);
+    column-gap: clamp(40px, 8.33vw, 120px);
+  }
+  .foto {
+    aspect-ratio: 600 / 750;
+    overflow: hidden;
+    background: var(--arena);
+  }
+  .foto :global(img) {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .textos {
+    max-width: 540px;
+  }
+  .titulo {
+    margin: 33px 0 0 -4px;
+    font-size: clamp(42px, 4.58vw, 66px);
+    line-height: 1.1;
+  }
+  .parrafo {
+    max-width: 480px;
+    margin: 37px 0 0;
+    font-size: 14px;
+    line-height: 23.8px;
+  }
+  .enlace {
+    display: block;
+    max-width: 480px;
+    margin-top: 83px;
+    padding-bottom: 34px;
+    border-bottom: 1px solid var(--linea-tinta);
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 20.4px;
+    text-decoration: none;
+    color: var(--tinta);
+  }
+  .enlace span {
+    margin-left: 1.6em;
+  }
+  .enlace:hover {
+    color: var(--oro);
+  }
+  .disenadora {
+    margin-top: 39px;
+  }
+  .nombre {
+    margin: 22px 0 0 -2px;
+    font-size: clamp(32px, 2.64vw, 38px);
+    line-height: 1.1;
+  }
+  .rol {
+    margin: 9px 0 0;
+    font-size: 19px;
+    font-style: italic;
+    line-height: 1.1;
+  }
+  .bio {
+    margin-top: 32px;
+  }
+  .origen {
+    margin-top: 34px;
+    font-weight: 400;
+  }
+
+  @media (max-width: 860px) {
+    .historia {
+      padding: 64px 0 56px;
+    }
+    .rejilla {
+      grid-template-columns: 1fr;
+    }
+    .origen {
+      grid-row: 2;
+      margin: 16px 0 40px;
+    }
+    .titulo {
+      margin-top: 20px;
+    }
+    .parrafo {
+      margin-top: 24px;
+    }
+    .enlace {
+      margin-top: 36px;
+      padding-bottom: 20px;
+    }
+  }
+</style>

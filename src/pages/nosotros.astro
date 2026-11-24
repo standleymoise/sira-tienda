@@ -1,0 +1,228 @@
+---
+// Página «Nosotros» (Figma 147:4876): historia de SIRA, la diseñadora Laura Mata,
+// filosofía y diseño consciente. Las anclas #disenadora, #filosofia y #consciente las usa el pie.
+import { Image } from 'astro:assets';
+import PaginaSira from '../layouts/PaginaSira.astro';
+import { rutas } from '../data/rutas';
+import atelier from '../assets/sira/atelier-textiles.png';
+import laura from '../assets/sira/laura-mata.png';
+---
+<PaginaSira
+  title="Nosotros | SIRA Conscious Apparel"
+  description="SIRA nace del deseo de crear piezas únicas que escapen de la producción masiva: prendas reversibles y siluetas limpias diseñadas en Costa Rica por Laura Mata."
+  activo="nosotros"
+>
+  <section class="historia contenedor-n" aria-labelledby="historia-titulo">
+    <div class="historia-texto">
+      <p class="etiqueta-espaciada">SIRA · Nuestra historia</p>
+      <h1 id="historia-titulo" class="serif titulo">Costa Rican Spirit.<br />Global Mindset.</h1>
+      <p class="parrafo">
+        SIRA nace del deseo de crear piezas únicas que escapen de la producción masiva. Cada diseño surge de la mezcla
+        inesperada de textiles nuevos y recuperados, dando vida a prendas reversibles y siluetas limpias concebidas para durar.
+      </p>
+      <p class="parrafo">
+        Diseñamos con intención: valoramos el carácter irrepetible de cada rollo de tela, el oficio de la confección local y
+        la libertad de vestir prendas que conversan con quien las lleva.
+      </p>
+    </div>
+    <div class="foto">
+      <Image
+        src={atelier}
+        alt="Atelier y textiles SIRA"
+        format="webp"
+        widths={[489, 978]}
+        sizes="(max-width: 760px) calc(100vw - 40px), 489px"
+        loading="eager"
+        fetchpriority="high"
+      />
+    </div>
+  </section>
+
+  <section class="disenadora" id="disenadora" aria-labelledby="disenadora-titulo">
+    <div class="disenadora-grid contenedor-n">
+      <div class="foto foto-laura">
+        <Image
+          src={laura}
+          alt="Laura Mata, fundadora y diseñadora de SIRA"
+          format="webp"
+          widths={[489, 978]}
+          sizes="(max-width: 760px) calc(100vw - 40px), 489px"
+        />
+      </div>
+      <div class="disenadora-texto">
+        <p class="etiqueta-espaciada">La diseñadora</p>
+        <h2 id="disenadora-titulo" class="serif nombre">LAURA MATA</h2>
+        <p class="serif cargo">Founder &amp; Designer</p>
+        <p class="parrafo">
+          Su trayectoria une mundos que rara vez coinciden. Con formación inicial en tecnología, el año 2000 la acercó al
+          universo de la moda internacional a través de Miss Costa Rica y Miss Universo, despertando una sensibilidad
+          duradera por las proporciones, la imagen y el lenguaje de los textiles.
+        </p>
+        <p class="parrafo">
+          Posteriormente profundizó su visión cursando estudios de Personal Styling en London College of Fashion. De esa
+          síntesis entre rigor, intuición estética y búsqueda de autenticidad nació SIRA: una casa contemporánea donde cada
+          prenda tiene historia propia.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section class="principios contenedor-n" aria-label="Filosofía y diseño consciente">
+    <article id="filosofia" class="principio">
+      <p class="etiqueta-espaciada">Nuestra filosofía</p>
+      <h2 class="serif">Menos volumen, mayor intención</h2>
+      <p class="parrafo">
+        Creemos en el lujo silencioso: piezas que no gritan por atención, pero se reconocen al instante por su textura,
+        construcción y versatilidad.
+      </p>
+    </article>
+    <article id="consciente" class="principio">
+      <p class="etiqueta-espaciada">Diseño consciente</p>
+      <h2 class="serif">Textiles con segunda vida</h2>
+      <p class="parrafo">
+        Combinamos textiles nuevos seleccionados y remanentes recuperados en ediciones cortas y prendas reversibles,
+        extendiendo el ciclo de vida de cada material.
+      </p>
+    </article>
+  </section>
+
+  <p class="descubrir">
+    <a class="enlace-linea" href={rutas.reversibles}>Descubrir Reversible <span aria-hidden="true">→</span></a>
+  </p>
+</PaginaSira>
+
+<style>
+  /* El Figma usa un contenido de 1264 px (88 px de margen en 1440). */
+  .contenedor-n {
+    width: min(100% - 2 * var(--margen), 1264px);
+    margin-inline: auto;
+  }
+  .parrafo {
+    margin: 24px 0 0;
+    font-size: 14px;
+    line-height: 2;
+    letter-spacing: 0.025em;
+    color: var(--gris);
+  }
+  .foto {
+    background: var(--arena);
+    aspect-ratio: 489 / 612;
+    overflow: hidden;
+  }
+  .foto :global(img) {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  /* ---------- 1. Historia ---------- */
+  .historia {
+    display: grid;
+    grid-template-columns: minmax(0, 600px) minmax(0, 489px);
+    justify-content: space-between;
+    align-items: center;
+    gap: 48px;
+    padding-top: clamp(32px, 3.5vw, 51px);
+  }
+  .titulo {
+    margin: 24px 0 0;
+    font-size: clamp(40px, 4.17vw, 60px);
+    line-height: 1.08;
+    color: var(--tinta-fuerte);
+  }
+
+  /* ---------- 2. La diseñadora ---------- */
+  .disenadora {
+    margin-top: 22px;
+    padding-block: clamp(56px, 8.9vw, 128px);
+    background: var(--arena);
+  }
+  .disenadora-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 489px) minmax(0, 600px);
+    justify-content: space-between;
+    align-items: center;
+    gap: 48px;
+  }
+  .foto-laura {
+    background: var(--arena-oscura);
+  }
+  .foto-laura :global(img) {
+    object-position: 50% 20%;
+  }
+  .nombre {
+    margin: 24px 0 0;
+    font-size: clamp(36px, 3.33vw, 48px);
+    line-height: 1;
+    color: var(--tinta-fuerte);
+  }
+  .cargo {
+    margin: 24px 0 0;
+    font-size: 18px;
+    font-style: italic;
+    line-height: 28px;
+    color: var(--oro);
+  }
+
+  /* ---------- 3. Filosofía y diseño consciente ---------- */
+  .principios {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 80px;
+    margin-top: clamp(56px, 6.7vw, 96px);
+  }
+  .principio {
+    padding-top: 32px;
+    border-top: 1px solid var(--linea);
+    scroll-margin-top: 24px;
+  }
+  .principio h2 {
+    margin: 16px 0 0;
+    font-size: clamp(26px, 2.08vw, 30px);
+    line-height: 1.2;
+    color: var(--tinta-fuerte);
+  }
+  .principio .parrafo {
+    margin-top: 16px;
+  }
+  .descubrir {
+    margin: 64px 0 0;
+    padding-bottom: 42px;
+    text-align: center;
+  }
+
+  /* ---------- responsive ---------- */
+  @media (max-width: 900px) {
+    .historia,
+    .disenadora-grid {
+      gap: 32px;
+    }
+    .principios {
+      gap: 40px;
+    }
+  }
+  @media (max-width: 760px) {
+    .historia,
+    .disenadora-grid,
+    .principios {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .historia .foto,
+    .foto-laura {
+      width: 100%;
+      max-width: 489px;
+    }
+    .foto-laura {
+      order: 0;
+    }
+    .principios {
+      gap: 48px;
+    }
+    .descubrir {
+      margin-top: 48px;
+    }
+    .disenadora {
+      margin-top: 48px;
+    }
+  }
+</style>

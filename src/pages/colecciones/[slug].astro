@@ -1,0 +1,58 @@
+---
+// /colecciones/<slug>/ (Figma: «ENTRE LÍNEAS» 147:4097): texto editorial de la colección y sus piezas,
+// que son las de la categoría de WooCommerce indicada en `colecciones` (src/data/sira.ts).
+// Mientras la categoría no exista o esté vacía, se muestra la foto de la colección y un aviso.
+import PaginaSira from '../../layouts/PaginaSira.astro';
+import Listado from '../../components/sira/listado/Listado.astro';
+import EstadoVacio from '../../components/sira/listado/EstadoVacio.astro';
+import { getProductos } from '../../data/tienda';
+import { colecciones } from '../../data/sira';
+import { rutas } from '../../data/rutas';
+import { tienda } from '../../../tienda.config';
+
+export function getStaticPaths() {
+  return colecciones.map((c) => ({ params: { slug: c.slug }, props: { coleccion: c } }));
+}
+
+const { coleccion: c } = Astro.props;
+const productos = (await getProductos()).filter((p) => p.categoriasSlug.includes(c.categoria));
+const nombre = c.nombre.charAt(0) + c.nombre.slice(1).toLowerCase();
+const sitio = Astro.site ?? Astro.url;
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'BreadcrumbList',
+  itemListElement: [
+    { '@type': 'ListItem', position: 1, name: 'Inicio', item: new URL(rutas.inicio, sitio).href },
+    { '@type': 'ListItem', position: 2, name: 'Colecciones', item: new URL(rutas.colecciones, sitio).href },
+    { '@type': 'ListItem', position: 3, name: nombre, item: new URL(rutas.coleccion(c.slug), sitio).href },
+  ],
+};
+---
+<PaginaSira
+  title={`${nombre}: ${c.etiquetaPagina.toLowerCase()} | ${tienda.marca.nombre}`}
+  description={`${c.lema} ${c.texto}`}
+  activo="colecciones"
+  imagen={c.imagen.src}
+  jsonLd={jsonLd}
+>
+  <Listado
+    etiqueta={c.etiquetaPagina}
+    titulo={c.nombre}
+    texto={c.texto}
+    textoGrande
+    productos={productos}
+    coleccionActual={c.slug}
+  >
+    <EstadoVacio
+      slot="vacio"
+      lema={c.lema}
+      imagen={c.imagen}
+      imagenAlt={c.imagenAlt}
+      texto="Las piezas de esta colección se producen en series muy cortas. Vuelva pronto o descubra lo que ya está disponible."
+      enlaces={[
+        { texto: 'Ver toda la tienda →', href: rutas.productos },
+        { texto: 'Otras colecciones →', href: rutas.colecciones },
+      ]}
+    />
+  </Listado>
+</PaginaSira>

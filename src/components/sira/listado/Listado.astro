@@ -1,0 +1,561 @@
+---
+// Listado de piezas SIRA (Figma: «Novedades» 147:3915, colección «ENTRE LÍNEAS» 147:4097, «Tienda» 147:4282).
+//   Cabecera (etiqueta + título + párrafo) · barra de filtros (tipo de prenda, colección, solo reversibles)
+//   · cuadrícula de tarjetas · paginación opcional («1 2 3 4 5») · búsqueda opcional por ?q=.
+// El filtrado ocurre en el navegador con los data-* de <TarjetaProducto> y se refleja en la URL
+// (?tipo=, ?coleccion=, ?reversibles=1, ?q=, ?pagina=) para poder compartir el enlace.
+// Sin JavaScript se ven todas las piezas (nada se oculta desde el servidor).
+import TarjetaProducto from '../TarjetaProducto.astro';
+import EstadoVacio from './EstadoVacio.astro';
+import type { Producto } from '../../../data/tienda';
+import { tiposDePrenda, colecciones } from '../../../data/sira';
+import { rutas, url } from '../../../data/rutas';
+
+interface Props {
+  etiqueta: string;
+  titulo: string;
+  texto?: string;
+  /** Párrafo a 14 px (páginas de colección) en lugar de 12 px. */
+  textoGrande?: boolean;
+  productos: Producto[];
+  /** Piezas por página (0 = sin paginación). */
+  porPagina?: number;
+  /** Activa la búsqueda por ?q= (la usa el buscador del encabezado). */
+  busqueda?: boolean;
+  /**
+   * En la página de una colección: el desplegable muestra esa colección y, al cambiarlo,
+   * lleva a la página de la otra colección (o a la tienda con «Todas las colecciones»).
+   */
+  coleccionActual?: string;
+}
+const {
+  etiqueta,
+  titulo,
+  texto,
+  textoGrande = false,
+  productos,
+  porPagina = 0,
+  busqueda = false,
+  coleccionActual,
+} = Astro.props;
+
+const datosTipos = JSON.stringify(Object.fromEntries(tiposDePrenda.map((t) => [t.id, t.categorias])));
+const datosColecciones = JSON.stringify(Object.fromEntries(colecciones.map((c) => [c.slug, c.categoria])));
+const hayProductos = productos.length > 0;
+---
+<section
+  class="listado"
+  data-listado
+  data-tipos={datosTipos}
+  data-colecciones={datosColecciones}
+  data-por-pagina={porPagina}
+  data-busqueda={busqueda ? '1' : '0'}
+  data-coleccion-fija={coleccionActual ?? ''}
+  aria-labelledby="listado-titulo"
+>
+  <header class="cabecera">
+    <p class="etiqueta-espaciada">{etiqueta}</p>
+    <h1 id="listado-titulo" class="titulo serif">{titulo}</h1>
+    {texto && <p class:list={['texto', { 'texto-grande': textoGrande }]}>{texto}</p>}
+  </header>
+
+  {hayProductos ? (
+    <>
+      <div class="filtros" role="region" aria-label="Filtrar piezas">
+        <div class="tipos" role="group" aria-label="Tipo de prenda">
+          <button type="button" class="tipo activo" data-tipo="" aria-pressed="true">Ver todo</button>
+          {tiposDePrenda.map((t) => (
+            <button type="button" class="tipo" data-tipo={t.id} aria-pressed="false">{t.texto}</button>
+          ))}
+        </div>
+        <div class="controles">
+          <label class="desplegable" style={`--flecha: url(${url('/img/icono-flecha-abajo.svg')})`}>
+            <span class="sr-only">Filtrar por colección</span>
+            <select data-coleccion>
+              <option value="" data-href={rutas.productos}>TODAS LAS COLECCIONES</option>
+              {colecciones.map((c) => (
+                <option value={c.slug} data-href={rutas.coleccion(c.slug)} selected={c.slug === coleccionActual}>
+                  {c.nombre}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label class="casilla">
+            <input type="checkbox" data-reversibles />
+            <span>Solo reversibles</span>
+          </label>
+        </div>
+      </div>
+
+      {busqueda && (
+        <div class="resultado" data-resultado hidden>
+          <p class="resultado-texto serif" aria-live="polite">
+            Resultados para “<span data-resultado-q></span>”
+          </p>
+          <button type="button" class="limpiar" data-limpiar-busqueda>Limpiar búsqueda ×</button>
+        </div>
+      )}
+
+      <ul class="cuadricula" data-cuadricula>
+        {productos.map((p, i) => (
+          <li data-item>
+            <TarjetaProducto producto={p} variante="lista" prioridad={i < 3} />
+          </li>
+        ))}
+      </ul>
+
+      <div data-vacio-filtros hidden>
+        <EstadoVacio titulo="No encontramos piezas con estos filtros.">
+          <p class="vacio-acciones">
+            <button type="button" class="enlace-linea boton-limpio" data-ver-todo>Ver todas las piezas →</button>
+          </p>
+        </EstadoVacio>
+      </div>
+
+      {porPagina > 0 && <nav class="paginas" aria-label="Páginas" data-paginas hidden></nav>}
+    </>
+  ) : (
+    <div class="sin-piezas">
+      <slot name="vacio">
+        <EstadoVacio
+          texto="Estamos preparando nuevas piezas. Mientras tanto, puede recorrer el resto del universo SIRA."
+          enlaces={[{ texto: 'Ver toda la tienda →', href: rutas.productos }]}
+        />
+      </slot>
+    </div>
+  )}
+</section>
+
+<script>
+  /** Minúsculas y sin tildes, para comparar nombres. */
+  const normalizar = (s: string) =>
+    s
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[̀-ͯ]/g, '')
+      .trim();
+
+  document.querySelectorAll<HTMLElement>('[data-listado]').forEach((raiz) => {
+    const cuadricula = raiz.querySelector<HTMLElement>('[data-cuadricula]');
+    if (!cuadricula) return; // sin piezas: no hay nada que filtrar
+
+    const tipos = JSON.parse(raiz.dataset.tipos || '{}') as Record<string, string[]>;
+    const colecciones = JSON.parse(raiz.dataset.colecciones || '{}') as Record<string, string>;
+    const porPagina = Number(raiz.dataset.porPagina || 0);
+    const conBusqueda = raiz.dataset.busqueda === '1';
+    const coleccionFija = raiz.dataset.coleccionFija || '';
+
+    const items = [...cuadricula.querySelectorAll<HTMLElement>('[data-item]')].map((li) => {
+      const t = li.querySelector<HTMLElement>('[data-tarjeta]')!;
+      return {
+        li,
+        categorias: (t.dataset.categorias || '').split(' ').filter(Boolean),
+        reversible: t.dataset.reversible === '1',
+        nombre: normalizar(t.dataset.nombre || ''),
+      };
+    });
+
+    const botonesTipo = [...raiz.querySelectorAll<HTMLButtonElement>('[data-tipo]')];
+    const selColeccion = raiz.querySelector<HTMLSelectElement>('[data-coleccion]')!;
+    const chkReversibles = raiz.querySelector<HTMLInputElement>('[data-reversibles]')!;
+    const vacio = raiz.querySelector<HTMLElement>('[data-vacio-filtros]')!;
+    const vacioTitulo = vacio.querySelector<HTMLElement>('.vacio-titulo');
+    const nav = raiz.querySelector<HTMLElement>('[data-paginas]');
+    const resultado = raiz.querySelector<HTMLElement>('[data-resultado]');
+    const resultadoQ = raiz.querySelector<HTMLElement>('[data-resultado-q]');
+
+    // Estado inicial desde la URL (los valores desconocidos se ignoran)
+    const params = new URLSearchParams(location.search);
+    const estado = {
+      tipo: params.get('tipo') && params.get('tipo')! in tipos ? params.get('tipo')! : '',
+      coleccion: coleccionFija || (params.get('coleccion') && params.get('coleccion')! in colecciones ? params.get('coleccion')! : ''),
+      reversibles: params.get('reversibles') === '1',
+      q: conBusqueda ? (params.get('q') || '').trim() : '',
+      pagina: Math.max(1, Number(params.get('pagina')) || 1),
+    };
+
+    const actualizarUrl = () => {
+      const u = new URL(location.href);
+      const poner = (k: string, v: string) => (v ? u.searchParams.set(k, v) : u.searchParams.delete(k));
+      poner('tipo', estado.tipo);
+      if (!coleccionFija) poner('coleccion', estado.coleccion);
+      poner('reversibles', estado.reversibles ? '1' : '');
+      if (conBusqueda) poner('q', estado.q);
+      poner('pagina', estado.pagina > 1 ? String(estado.pagina) : '');
+      history.replaceState(history.state, '', u.pathname + u.search + u.hash);
+    };
+
+    const pasa = (it: (typeof items)[number]) => {
+      if (estado.tipo && !tipos[estado.tipo].some((c) => it.categorias.includes(c))) return false;
+      // En la página de una colección las piezas ya vienen filtradas desde el servidor
+      if (estado.coleccion && !coleccionFija && !it.categorias.includes(colecciones[estado.coleccion])) return false;
+      if (estado.reversibles && !it.reversible) return false;
+      if (estado.q && !it.nombre.includes(normalizar(estado.q))) return false;
+      return true;
+    };
+
+    const pintarPaginas = (total: number) => {
+      if (!nav) return;
+      nav.hidden = total <= 1;
+      nav.replaceChildren();
+      for (let n = 1; n <= total; n++) {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.textContent = String(n);
+        b.className = 'pagina' + (n === estado.pagina ? ' activa' : '');
+        b.setAttribute('aria-label', `Página ${n}`);
+        if (n === estado.pagina) b.setAttribute('aria-current', 'page');
+        b.addEventListener('click', () => {
+          estado.pagina = n;
+          aplicar();
+          raiz.querySelector('.filtros')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+        nav.append(b);
+      }
+    };
+
+    const aplicar = () => {
+      const visibles = items.filter(pasa);
+      const total = porPagina > 0 ? Math.max(1, Math.ceil(visibles.length / porPagina)) : 1;
+      estado.pagina = Math.min(estado.pagina, total);
+      const desde = porPagina > 0 ? (estado.pagina - 1) * porPagina : 0;
+      const hasta = porPagina > 0 ? desde + porPagina : visibles.length;
+      const enPagina = new Set(visibles.slice(desde, hasta));
+      items.forEach((it) => (it.li.hidden = !enPagina.has(it)));
+
+      botonesTipo.forEach((b) => {
+        const si = b.dataset.tipo === estado.tipo;
+        b.classList.toggle('activo', si);
+        b.setAttribute('aria-pressed', String(si));
+      });
+      selColeccion.value = estado.coleccion;
+      selColeccion.classList.toggle('activo', !!estado.coleccion);
+      chkReversibles.checked = estado.reversibles;
+
+      if (resultado && resultadoQ) {
+        resultado.hidden = !estado.q;
+        resultadoQ.textContent = estado.q;
+      }
+
+      vacio.hidden = visibles.length > 0;
+      if (vacioTitulo && !visibles.length) {
+        vacioTitulo.textContent = estado.q
+          ? `No encontramos piezas para «${estado.q}».`
+          : estado.coleccion && !coleccionFija
+            ? 'Pronto nuevas piezas en esta colección.'
+            : 'No encontramos piezas con estos filtros.';
+      }
+      pintarPaginas(total);
+      actualizarUrl();
+    };
+
+    botonesTipo.forEach((b) =>
+      b.addEventListener('click', () => {
+        estado.tipo = b.dataset.tipo || '';
+        estado.pagina = 1;
+        aplicar();
+      }),
+    );
+    selColeccion.addEventListener('change', () => {
+      if (coleccionFija) {
+        // Página de colección: el desplegable lleva a la otra colección (o a toda la tienda)
+        const href = selColeccion.selectedOptions[0]?.dataset.href;
+        if (href) location.href = href;
+        return;
+      }
+      estado.coleccion = selColeccion.value;
+      estado.pagina = 1;
+      aplicar();
+    });
+    chkReversibles.addEventListener('change', () => {
+      estado.reversibles = chkReversibles.checked;
+      estado.pagina = 1;
+      aplicar();
+    });
+    raiz.querySelector('[data-limpiar-busqueda]')?.addEventListener('click', () => {
+      estado.q = '';
+      estado.pagina = 1;
+      aplicar();
+    });
+    raiz.querySelector('[data-ver-todo]')?.addEventListener('click', () => {
+      estado.tipo = '';
+      if (!coleccionFija) estado.coleccion = '';
+      estado.reversibles = false;
+      estado.q = '';
+      estado.pagina = 1;
+      aplicar();
+    });
+
+    aplicar();
+  });
+</script>
+
+<style>
+  .listado {
+    width: min(100% - 2 * var(--margen), 1264px);
+    margin-inline: auto;
+    padding-block: clamp(48px, 6.7vw, 96px);
+  }
+
+  /* Cabecera */
+  .cabecera {
+    max-width: 672px;
+  }
+  .cabecera .etiqueta-espaciada {
+    font-size: 11px;
+    line-height: 16.5px;
+    letter-spacing: 2.64px;
+  }
+  .titulo {
+    margin: 12px 0 0;
+    font-size: clamp(40px, 4.2vw + 10px, 60px);
+    line-height: 1;
+    color: var(--tinta-fuerte);
+  }
+  .texto {
+    margin: 12px 0 0;
+    font-size: 12px;
+    line-height: 19.5px;
+    letter-spacing: 0.3px;
+    color: var(--gris);
+  }
+  .texto-grande {
+    font-size: 14px;
+    line-height: 28px;
+    letter-spacing: 0.35px;
+  }
+
+  /* Barra de filtros */
+  .filtros {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    margin-top: 48px;
+    padding: 20px 0;
+    border-block: 1px solid var(--linea);
+  }
+  .tipos {
+    display: flex;
+    gap: 24px;
+    min-width: 0;
+  }
+  .tipo {
+    flex: none;
+    padding: 0;
+    border: 0;
+    background: none;
+    font: inherit;
+    font-size: 11px;
+    line-height: 16.5px;
+    letter-spacing: 1.98px;
+    text-transform: uppercase;
+    white-space: nowrap;
+    color: var(--gris);
+    cursor: pointer;
+    text-decoration: underline transparent;
+    text-underline-offset: 6px;
+    text-decoration-thickness: 1px;
+    transition:
+      color 0.2s,
+      text-decoration-color 0.2s;
+  }
+  .tipo:hover {
+    color: var(--tinta-fuerte);
+  }
+  .tipo.activo {
+    color: var(--tinta-fuerte);
+    text-decoration-color: var(--tinta-fuerte);
+  }
+  .controles {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    flex: none;
+  }
+  .desplegable select {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 205px;
+    height: 21px;
+    margin: 0;
+    padding: 0 24px 0 4px;
+    border: 1px solid var(--linea);
+    border-radius: 0;
+    background: transparent var(--flecha) no-repeat right 5px center / 10px 6px;
+    font: inherit;
+    font-size: 11px;
+    line-height: 13.4px;
+    letter-spacing: 1.76px;
+    text-transform: uppercase;
+    color: var(--tinta-fuerte);
+    cursor: pointer;
+  }
+  .desplegable select.activo {
+    border-color: var(--tinta-fuerte);
+  }
+  .casilla {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    line-height: 16.5px;
+    letter-spacing: 1.76px;
+    text-transform: uppercase;
+    white-space: nowrap;
+    color: var(--gris);
+    cursor: pointer;
+  }
+  .casilla input {
+    width: 13px;
+    height: 13px;
+    margin: 0;
+    accent-color: var(--tinta-fuerte);
+    cursor: pointer;
+  }
+  .casilla:has(input:checked) {
+    color: var(--tinta-fuerte);
+  }
+
+  /* Resultado de búsqueda */
+  .resultado {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px 24px;
+    margin-top: 32px;
+  }
+  .resultado[hidden] {
+    display: none;
+  }
+  .resultado-texto {
+    margin: 0;
+    font-size: clamp(24px, 2.4vw, 30px);
+    line-height: 1.2;
+    color: var(--tinta-fuerte);
+  }
+  .limpiar,
+  .boton-limpio {
+    padding: 0 0 5.6px;
+    border: 0;
+    border-bottom: 1px solid currentColor;
+    background: none;
+    font: inherit;
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 16.5px;
+    letter-spacing: 2.2px;
+    text-transform: uppercase;
+    color: var(--tinta-fuerte);
+    cursor: pointer;
+  }
+  .vacio-acciones {
+    margin: 8px 0 0;
+  }
+
+  /* Cuadrícula (Figma: 3 × 400, separación 32 horizontal y 48 vertical) */
+  .cuadricula {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 48px 32px;
+    margin: 48px 0 0;
+    padding: 0;
+    list-style: none;
+  }
+  .cuadricula > li[hidden] {
+    display: none;
+  }
+  [data-vacio-filtros] {
+    margin-top: 48px;
+  }
+
+  /* Paginación (Figma: «1 2 3 4 5», Montserrat 24,5 px) */
+  .paginas {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    margin-top: clamp(48px, 6vw, 80px);
+  }
+  .paginas[hidden] {
+    display: none;
+  }
+  .paginas :global(.pagina) {
+    min-width: 40px;
+    height: 40px;
+    padding: 0 4px;
+    border: 0;
+    border-bottom: 1px solid transparent;
+    background: none;
+    font: inherit;
+    font-size: 24.5px;
+    line-height: 39.8px;
+    color: var(--gris);
+    cursor: pointer;
+  }
+  .paginas :global(.pagina:hover),
+  .paginas :global(.pagina.activa) {
+    color: #000;
+  }
+  .paginas :global(.pagina.activa) {
+    border-bottom-color: #000;
+  }
+
+  .sin-piezas {
+    margin-top: 48px;
+    padding-top: 48px;
+    border-top: 1px solid var(--linea);
+  }
+
+  @media (max-width: 1100px) {
+    .filtros {
+      flex-wrap: wrap;
+      row-gap: 16px;
+    }
+    .tipos {
+      flex: 1 1 100%;
+      overflow-x: auto;
+      scrollbar-width: none;
+      /* que el foco y el subrayado no se corten */
+      padding: 4px 2px 8px;
+      margin: -4px -2px -8px;
+    }
+    .tipos::-webkit-scrollbar {
+      display: none;
+    }
+    .cuadricula {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+  @media (max-width: 560px) {
+    .filtros {
+      margin-top: 32px;
+      padding: 16px 0;
+    }
+    .controles {
+      flex: 1 1 100%;
+      flex-wrap: wrap;
+      gap: 12px 20px;
+    }
+    .desplegable,
+    .desplegable select {
+      width: 100%;
+    }
+    .desplegable select {
+      height: 32px;
+    }
+    .cuadricula {
+      gap: 32px 12px;
+      margin-top: 32px;
+    }
+    /* Tarjetas en 2 columnas angostas: precio y «Reversible» pueden ir en dos líneas */
+    .cuadricula :global(.fila-precio) {
+      flex-wrap: wrap;
+      row-gap: 4px;
+    }
+    .cuadricula :global(.tarjeta-lista .nombre) {
+      font-size: 16px;
+      line-height: 21px;
+    }
+  }
+</style>

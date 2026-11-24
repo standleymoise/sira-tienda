@@ -27,6 +27,18 @@ export interface Producto {
   precioNumero: string;
   moneda: string;
   categorias: string[];
+  /** Slugs de las categorías de WooCommerce (para filtros, colecciones, «reversible», mujer/hombre). */
+  categoriasSlug: string[];
+  /** simple | variable | … */
+  tipo: string;
+  /** Pieza reversible: alguna categoría con «reversible» en el slug. */
+  reversible: boolean;
+  /** «mujer» / «hombre» si alguna categoría termina así; si no, vacío. */
+  genero: '' | 'mujer' | 'hombre';
+  /** Atributos que eligen variación (talla, color…), con sus opciones. */
+  opciones: { nombre: string; valores: { nombre: string; slug: string }[] }[];
+  /** Variaciones: id y valores de sus atributos (por nombre de atributo → slug). */
+  variaciones: { id: number; atributos: Record<string, string> }[];
   enStock: boolean;
   /** «50 disponibles», «Agotado»… tal como lo dice WooCommerce. */
   stockTexto: string;
@@ -47,7 +59,10 @@ interface StoreApiProducto {
   slug: string;
   name: string;
   permalink: string;
-  categories?: { name: string }[];
+  categories?: { name: string; slug: string }[];
+  type?: string;
+  attributes?: { name: string; has_variations: boolean; terms?: { name: string; slug: string }[] }[];
+  variations?: { id: number; attributes: { name: string; value: string }[] }[];
   short_description: string;
   description: string;
   stock_availability?: { text: string };
@@ -101,6 +116,21 @@ const aProducto = (p: StoreApiProducto): Producto => ({
   precioNumero: (Number(p.prices.price) / 10 ** p.prices.currency_minor_unit).toFixed(p.prices.currency_minor_unit),
   moneda: p.prices.currency_code,
   categorias: (p.categories ?? []).map((c) => c.name),
+  categoriasSlug: (p.categories ?? []).map((c) => c.slug),
+  tipo: p.type ?? 'simple',
+  reversible: (p.categories ?? []).some((c) => c.slug.includes('reversible')),
+  genero: (p.categories ?? []).some((c) => /(^|-)mujer$/.test(c.slug))
+    ? 'mujer'
+    : (p.categories ?? []).some((c) => /(^|-)hombre$/.test(c.slug))
+      ? 'hombre'
+      : '',
+  opciones: (p.attributes ?? [])
+    .filter((a) => a.has_variations)
+    .map((a) => ({ nombre: a.name, valores: (a.terms ?? []).map((t) => ({ nombre: t.name, slug: t.slug })) })),
+  variaciones: (p.variations ?? []).map((v) => ({
+    id: v.id,
+    atributos: Object.fromEntries(v.attributes.map((a) => [a.name, a.value])),
+  })),
   enStock: p.is_purchasable && p.is_in_stock,
   stockTexto: p.stock_availability?.text || (p.is_in_stock ? 'Disponible' : 'Agotado'),
   imagen: p.images[0] ? { src: p.images[0].src, alt: p.images[0].alt || p.name } : undefined,
@@ -124,6 +154,12 @@ export function getProductos(): Promise<Producto[]> {
   );
   return cache;
 }
+
+/**
+ * Clave para favoritos: el SKU, o «id-<número>» si el producto no tiene SKU.
+ * (La usan las tarjetas, la ficha y la página /favoritos.)
+ */
+export const claveFavorito = (p: { sku: string; id: number }) => p.sku || `id-${p.id}`;
 
 /** Base de la Store API, para el carrito y el checkout desde el navegador. */
 export const storeApiUrl = tiendaActiva ? `${tiendaUrl}/wp-json/wc/store/v1` : '';

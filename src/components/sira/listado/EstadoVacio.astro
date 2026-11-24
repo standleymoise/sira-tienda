@@ -1,0 +1,122 @@
+---
+// Estado vacío con estilo SIRA: cuando una colección o un filtro todavía no tiene piezas.
+// Con «imagen» se muestra en dos columnas (foto editorial + texto); sin ella, centrado y sobrio.
+import { Image } from 'astro:assets';
+import type { ImageMetadata } from 'astro';
+
+interface Props {
+  /** Etiqueta pequeña arriba del texto (opcional). */
+  etiqueta?: string;
+  /** Frase en itálica (lema de la colección). */
+  lema?: string;
+  titulo?: string;
+  texto?: string;
+  imagen?: ImageMetadata;
+  imagenAlt?: string;
+  enlaces?: { texto: string; href: string }[];
+}
+const {
+  etiqueta,
+  lema,
+  titulo = 'Pronto nuevas piezas en esta colección.',
+  texto,
+  imagen,
+  imagenAlt = '',
+  enlaces = [],
+} = Astro.props;
+---
+<div class:list={['vacio', { 'con-foto': imagen }]}>
+  {imagen && (
+    <div class="vacio-foto">
+      <Image src={imagen} alt={imagenAlt} format="webp" widths={[400, 640, 960]} sizes="(max-width: 760px) 92vw, 560px" loading="eager" />
+    </div>
+  )}
+  <div class="vacio-texto">
+    {etiqueta && <p class="etiqueta-espaciada">{etiqueta}</p>}
+    {lema && <p class="vacio-lema serif">{lema}</p>}
+    <p class="vacio-titulo serif">{titulo}</p>
+    {texto && <p class="vacio-parrafo">{texto}</p>}
+    {enlaces.length > 0 && (
+      <p class="vacio-enlaces">
+        {enlaces.map((e) => <a class="enlace-linea" href={e.href}>{e.texto}</a>)}
+      </p>
+    )}
+    <slot />
+  </div>
+</div>
+
+<style>
+  .vacio {
+    display: grid;
+    justify-items: center;
+    padding: clamp(48px, 8vw, 96px) 0;
+    text-align: center;
+    border-bottom: 1px solid var(--linea);
+  }
+  .vacio.con-foto {
+    grid-template-columns: minmax(0, 560px) minmax(0, 489px);
+    justify-content: space-between;
+    align-items: center;
+    gap: clamp(32px, 5vw, 64px);
+    padding: 0;
+    text-align: left;
+    border-bottom: 0;
+  }
+  .vacio-foto {
+    width: 100%;
+    aspect-ratio: 4 / 5;
+    overflow: hidden;
+    background: var(--arena);
+  }
+  .vacio-foto :global(img) {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .vacio-texto {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    max-width: 489px;
+  }
+  .con-foto .vacio-texto {
+    justify-self: start;
+  }
+  :not(.con-foto) > .vacio-texto {
+    align-items: center;
+  }
+  .vacio-titulo {
+    margin: 0;
+    font-size: clamp(28px, 3vw, 36px);
+    line-height: 1.15;
+    color: var(--tinta-fuerte);
+  }
+  .vacio-lema {
+    margin: 0;
+    font-size: 20px;
+    font-style: italic;
+    line-height: 28px;
+    color: var(--gris);
+  }
+  .vacio-parrafo {
+    margin: 0;
+    font-size: 14px;
+    line-height: 28px;
+    letter-spacing: 0.35px;
+    color: var(--gris);
+  }
+  .vacio-enlaces {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px 32px;
+    margin: 8px 0 0;
+  }
+  :not(.con-foto) > .vacio-texto .vacio-enlaces {
+    justify-content: center;
+  }
+  @media (max-width: 760px) {
+    .vacio.con-foto {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

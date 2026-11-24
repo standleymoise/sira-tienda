@@ -1,33 +1,49 @@
 ---
-import Base from '../layouts/Base.astro';
-import Logo from '../components/Logo.astro';
+// Página 404 con el estilo SIRA.
+import PaginaSira from '../layouts/PaginaSira.astro';
 import { rutas } from '../data/rutas';
 ---
-<Base title="Página no encontrada" noindex>
-  <main class="no-encontrada">
-    <Logo alto={44} />
-    <h1>No encontramos esa página</h1>
-    <p>Puede que el enlace esté mal escrito o que la página ya no exista.</p>
-    <a class="btn" href={rutas.inicio}>Ir a la tienda</a>
-  </main>
-</Base>
+<PaginaSira title="Página no encontrada | SIRA Conscious Apparel" noindex>
+  <section class="mensaje" aria-labelledby="titulo-404">
+    <p class="etiqueta-espaciada">Error 404</p>
+    <h1 id="titulo-404" class="serif">No encontramos esta página</h1>
+    <p class="texto">Puede que el enlace esté mal escrito o que la página ya no exista.</p>
+    <div class="acciones">
+      <a class="btn" href={rutas.inicio}>Ir al inicio</a>
+      <a class="enlace-linea" href={rutas.productos}>Ver la tienda <span aria-hidden="true">→</span></a>
+    </div>
+  </section>
+</PaginaSira>
 
 <style>
-  .no-encontrada {
+  .mensaje {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 14px;
-    max-width: 480px;
+    width: min(100% - 2 * var(--margen), 640px);
     margin: 0 auto;
-    padding: 18vh 20px 40px;
+    padding: clamp(64px, 9vw, 128px) 0 clamp(72px, 9vw, 128px);
     text-align: center;
   }
   h1 {
-    margin: 10px 0 0;
-    color: var(--primario);
+    margin: 20px 0 0;
+    font-size: clamp(40px, 4.17vw, 60px);
+    line-height: 1.08;
+    color: var(--tinta-fuerte);
   }
-  p {
-    margin: 0 0 10px;
+  .texto {
+    margin: 20px 0 0;
+    font-size: 14px;
+    line-height: 2;
+    letter-spacing: 0.025em;
+    color: var(--gris);
+  }
+  .acciones {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 24px 40px;
+    margin-top: 36px;
   }
 </style>

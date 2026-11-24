@@ -1,0 +1,172 @@
+---
+// Historias para llevar (Figma: 147:5179, 1440×830): tres tarjetas editoriales.
+// No hay página de historias en el diseño: el enlace y las tarjetas llevan a «Nosotros».
+import { Image } from 'astro:assets';
+import { rutas } from '../../../data/rutas';
+import imgDetras from '../../../assets/sira/detras-de-cada-pieza.png';
+import imgEntreLineas from '../../../assets/sira/entre-lineas-estampado.png';
+import imgCrModa from '../../../assets/sira/crmoda-fucsia.png';
+
+const historias = [
+  {
+    imagen: imgDetras,
+    alt: 'Detrás de cada pieza: fotografía del atelier SIRA',
+    categoria: 'Atelier · San José',
+    titulo: 'Detrás de cada pieza',
+    resumen: 'Detrás de cada pieza hay pruebas, textiles recuperados y decisiones tomadas con intención.',
+    href: rutas.nosotros,
+  },
+  {
+    imagen: imgEntreLineas,
+    alt: 'Entre Líneas: vestido de la colección actual',
+    categoria: 'Colección actual',
+    titulo: 'Entre Líneas',
+    resumen: 'La colección que cruza líneas rectas con formas que respiran.',
+    href: rutas.coleccion('entre-lineas'),
+  },
+  {
+    imagen: imgCrModa,
+    alt: 'CRModa: vestido SIRA en la pasarela',
+    categoria: 'Pasarela · Costa Rica',
+    titulo: 'CRModa',
+    resumen: 'Piezas SIRA en la pasarela: color, volumen y textiles que se mueven con quien los lleva.',
+    href: rutas.nosotros,
+  },
+];
+---
+<section id="historias" class="historias" aria-labelledby="historias-titulo">
+  <div class="contenedor">
+    <div class="cabeza">
+      <div>
+        <p class="etiqueta">El universo SIRA</p>
+        <h2 id="historias-titulo" class="titulo serif">Historias para llevar</h2>
+      </div>
+      <a class="ver" href={rutas.nosotros}>Ver historias<span aria-hidden="true">↗</span></a>
+    </div>
+    <div class="tarjetas">
+      {historias.map((h) => (
+        <article class="tarjeta">
+          <a class="foto" href={h.href} tabindex="-1" aria-hidden="true">
+            <Image
+              src={h.imagen}
+              alt=""
+              format="webp"
+              widths={[412, 824]}
+              sizes="(max-width: 760px) calc(100vw - 40px), (max-width: 1000px) 45vw, 29vw"
+              loading="lazy"
+            />
+          </a>
+          <p class="categoria">{h.categoria}</p>
+          <h3 class="nombre serif"><a href={h.href}>{h.titulo}</a></h3>
+          <p class="resumen">{h.resumen}</p>
+        </article>
+      ))}
+    </div>
+  </div>
+</section>
+
+<style>
+  .historias {
+    padding: 78px 0 42px;
+    scroll-margin-top: 100px;
+  }
+  .cabeza {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 24px;
+  }
+  .titulo {
+    margin: 17px 0 0 -2px;
+    font-size: clamp(38px, 3.75vw, 54px);
+    line-height: 1.1;
+  }
+  .ver {
+    flex: none;
+    /* En el Figma el enlace empieza en x=1190, no pegado al margen derecho. */
+    margin: 0 clamp(0px, 4.5vw, 65px) 12px 0;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 20.4px;
+    text-decoration: none;
+    color: var(--tinta);
+  }
+  .ver span {
+    margin-left: 1.6em;
+  }
+  .ver:hover {
+    color: var(--oro);
+  }
+  .tarjetas {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 40px 22px;
+    margin-top: 42px;
+  }
+  .tarjeta {
+    min-width: 0;
+  }
+  .foto {
+    display: block;
+    aspect-ratio: 412 / 440;
+    overflow: hidden;
+    background: var(--arena);
+  }
+  .foto :global(img) {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.6s ease;
+  }
+  .tarjeta:hover .foto :global(img) {
+    transform: scale(1.02);
+  }
+  .categoria {
+    margin: 22px 0 0;
+    font-size: 9px;
+    font-weight: 500;
+    line-height: 15.3px;
+    text-transform: uppercase;
+  }
+  .nombre {
+    margin: 13px 0 0;
+    font-size: clamp(26px, 2.08vw, 30px);
+    line-height: 1.1;
+  }
+  .nombre a {
+    color: inherit;
+    text-decoration: none;
+  }
+  .nombre a:hover {
+    color: var(--oro);
+  }
+  .resumen {
+    max-width: 390px;
+    margin: 12px 0 0;
+    font-size: 12px;
+    line-height: 20.4px;
+  }
+
+  @media (max-width: 1000px) {
+    .tarjetas {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+  @media (max-width: 760px) {
+    .historias {
+      padding: 64px 0 56px;
+    }
+    .cabeza {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 16px;
+    }
+    .ver {
+      margin: 0;
+    }
+    .tarjetas {
+      grid-template-columns: 1fr;
+      margin-top: 32px;
+    }
+  }
+</style>

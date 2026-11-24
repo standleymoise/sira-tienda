@@ -1,0 +1,1340 @@
+---
+// Carrito y pago SIRA: /carrito/ (Figma «Carrito – 2», 147:5743), fondo blanco, sin indexar.
+// Todo es real y en vivo desde la Store API de WooCommerce (carrito con Cart-Token):
+//   - tabla de artículos con cantidad −/+ y quitar; «Detalles de la compra» con los totales;
+//   - «Detalles de facturación y envío» + «Sumatoria de pedido» con las opciones de envío de
+//     WooCommerce (POST /cart/select-shipping-rate), cupón (POST /cart/apply-coupon) y los
+//     métodos de pago activos; «REALIZAR PAGO» → POST /checkout.
+// WooCommerce no tiene campos para el tipo y número de identificación: van al inicio de la nota
+// del pedido («Identificación: Cédula física 1-2345-6789»). Cantón → city, distrito → address_2,
+// dirección → address_1.
+// No se dibujan campos de tarjeta: una pasarela (p. ej. Afinia) lleva a su página segura de pago,
+// así los datos de la tarjeta nunca pasan por este sitio. Se omitieron los puntos de lealtad y el
+// texto de «Tienda City Mall» del Figma (no son de SIRA).
+import PaginaSira from '../layouts/PaginaSira.astro';
+import { getProductos, storeApiUrl } from '../data/tienda';
+import { rutas, url } from '../data/rutas';
+import { tienda } from '../../tienda.config';
+
+// id de producto o de variación → ficha en este sitio (los enlaces del carrito van a WordPress).
+const enlaces: Record<number, string> = {};
+for (const p of await getProductos()) {
+  enlaces[p.id] = rutas.producto(p.slug);
+  for (const v of p.variaciones) enlaces[v.id] = rutas.producto(p.slug);
+}
+
+// Códigos de provincia que acepta WooCommerce para Costa Rica (SJ, AL, CG…). tienda.config.ts
+// trae los de ISO (CR-SJ…): se traducen aquí; si el config ya trae los de WooCommerce, quedan igual.
+const CODIGOS_WC: Record<string, string> = {
+  'CR-SJ': 'SJ',
+  'CR-A': 'AL',
+  'CR-C': 'CG',
+  'CR-H': 'HD',
+  'CR-G': 'GT',
+  'CR-P': 'PT',
+  'CR-L': 'LM',
+};
+const provincias = tienda.pais.regiones.map(([codigo, nombre]) => [CODIGOS_WC[codigo] ?? codigo, nombre, codigo]);
+const tiposId = ['Cédula física', 'Cédula jurídica', 'DIMEX', 'Pasaporte'];
+const postal = tienda.pais.codigoPostal;
+---
+<PaginaSira
+  title={`Carrito | ${tienda.marca.nombre}`}
+  description="Su carrito de compras y el pago del pedido."
+  noindex
+  activo="tienda"
+  fondo="blanco"
+>
+  <div
+    class="compra"
+    data-compra
+    data-api={storeApiUrl}
+    data-enlaces={JSON.stringify(enlaces)}
+    data-provincias={JSON.stringify(provincias.map(([wc, , iso]) => [iso, wc]))}
+    data-basurero={url('/img/icono-basurero.svg')}
+    style={`--flecha: url(${url('/img/icono-flecha-abajo.svg')})`}
+  >
+    <h1 class="titulo serif" data-titulo>Artículos en el Carrito</h1>
+
+    <p class="cargando" data-cargando role="status">Cargando su carrito…</p>
+
+    <div class="mensaje" data-vacio hidden>
+      <p class="mensaje-titulo serif">Su carrito está vacío</p>
+      <p>Descubra las piezas únicas y prendas reversibles de SIRA.</p>
+      <a class="boton-oro" href={rutas.productos}>Ver la tienda</a>
+    </div>
+
+    <div class="mensaje" data-gracias hidden tabindex="-1">
+      <p class="mensaje-titulo serif" data-gracias-titulo>Gracias</p>
+      <p data-gracias-texto></p>
+      <a class="boton-oro" href={rutas.productos}>Seguir comprando</a>
+    </div>
+
+    <p class="error-general" data-error-general role="alert" hidden></p>
+
+    <div class="lleno" data-lleno hidden>
+      <!-- Fila 1: artículos + detalles de la compra -->
+      <div class="fila fila-carrito">
+        <div class="tabla-marco">
+          <table class="tabla">
+            <caption class="sr-only">Artículos en su carrito</caption>
+            <thead>
+              <tr>
+                <th scope="col" class="col-producto">Producto</th>
+                <th scope="col">Precio</th>
+                <th scope="col">Cantidad</th>
+                <th scope="col"><span class="sr-only">Quitar</span></th>
+              </tr>
+            </thead>
+            <tbody data-items></tbody>
+          </table>
+        </div>
+
+        <aside class="detalles-compra" aria-labelledby="titulo-detalles-compra">
+          <h2 id="titulo-detalles-compra">Detalles de la compra</h2>
+          <dl class="totales">
+            <div><dt>Subtotal</dt><dd data-t-subtotal></dd></div>
+            <div class="normal"><dt>Envío</dt><dd data-t-envio></dd></div>
+            <div data-fila-descuento hidden><dt>Descuento</dt><dd data-t-descuento></dd></div>
+            <div data-fila-impuestos><dt>Impuestos</dt><dd data-t-impuestos></dd></div>
+            <div class="total"><dt>Total:</dt><dd data-t-total></dd></div>
+          </dl>
+          <a class="boton-oro ancho" href="#facturacion" data-ir-pago>Proceder al pago</a>
+        </aside>
+      </div>
+
+      <!-- Fila 2: facturación y envío + sumatoria y pago -->
+      <form class="fila fila-pago" id="facturacion" data-form novalidate>
+        <div class="campos">
+          <h2>Detalles de facturación y envío</h2>
+
+          <label class="campo">
+            <span>Tipo de Identificación*</span>
+            <select name="tipo_id" required>
+              {tiposId.map((t) => <option value={t}>{t}</option>)}
+            </select>
+          </label>
+          <label class="campo">
+            <span>Número de Cédula / Identificación*</span>
+            <input name="numero_id" required minlength="5" placeholder="12345678" autocomplete="off" />
+          </label>
+          <label class="campo">
+            <span>Nombre*</span>
+            <input name="first_name" required placeholder="Digite su nombre aquí" autocomplete="given-name" />
+          </label>
+          <label class="campo">
+            <span>Apellidos*</span>
+            <input name="last_name" required placeholder="Digite sus apellidos aquí" autocomplete="family-name" />
+          </label>
+          <label class="campo">
+            <span>Correo*</span>
+            <input name="email" type="email" required placeholder="correo@mail.com" autocomplete="email" />
+          </label>
+          <label class="campo">
+            <span>Teléfono*</span>
+            <input name="phone" type="tel" required placeholder="8888 8888" autocomplete="tel" />
+          </label>
+          <label class="campo">
+            <span>País*</span>
+            <select name="country" required>
+              <option value={tienda.pais.codigo}>Costa Rica</option>
+            </select>
+          </label>
+          <label class="campo">
+            <span>{tienda.pais.etiquetaRegion}*</span>
+            <select name="state" required data-envio>
+              <option value="">Elija su provincia</option>
+              {provincias.map(([codigo, nombre]) => <option value={codigo}>{nombre}</option>)}
+            </select>
+          </label>
+          <label class="campo">
+            <span>{tienda.pais.etiquetaCiudad}*</span>
+            <input name="city" required placeholder="Curridabat" autocomplete="address-level2" data-envio />
+          </label>
+          <label class="campo">
+            <span>Distrito*</span>
+            <input name="address_2" required placeholder="Granadilla" autocomplete="address-level3" />
+          </label>
+          <label class="campo">
+            <span>Código postal{postal.requerido ? '*' : ''}</span>
+            <input
+              name="postcode"
+              required={postal.requerido}
+              pattern={postal.patron || undefined}
+              inputmode="numeric"
+              placeholder={postal.ayuda ? `${postal.ayuda}` : ''}
+              autocomplete="postal-code"
+              data-envio
+            />
+          </label>
+          <label class="campo">
+            <span>Dirección*</span>
+            <input name="address_1" required placeholder="Digite su dirección aquí" autocomplete="street-address" />
+          </label>
+        </div>
+
+        <div class="sumatoria">
+          <section class="caja caja-pedido" aria-labelledby="titulo-sumatoria">
+            <h2 id="titulo-sumatoria" class="titulo-oro">Sumatoria de pedido</h2>
+            <div class="par cabeza"><span>Producto</span><span>Subtotal</span></div>
+            <ul class="lineas" data-lineas></ul>
+            <div class="par fuerte"><span>Subtotal</span><span data-s-subtotal></span></div>
+            <fieldset class="envio" data-envio-caja>
+              <legend>Envío</legend>
+              <div class="tarifas" data-tarifas></div>
+            </fieldset>
+            <div class="par" data-s-fila-descuento hidden><span>Descuento</span><span data-s-descuento></span></div>
+            <div class="par" data-s-fila-impuestos><span>Impuestos</span><span data-s-impuestos></span></div>
+            <div class="par fuerte total"><span>Total:</span><span data-s-total></span></div>
+          </section>
+
+          <section class="caja caja-cupon" aria-label="Cupón">
+            <p class="cupon-pregunta">
+              <span>¿Tienes un cupón?</span>
+              <button type="button" class="enlace-cupon" data-abrir-cupon aria-expanded="false" aria-controls="cupon-campos">
+                Haz click aquí para agregar el cupón
+              </button>
+            </p>
+            <div class="cupon-campos" id="cupon-campos" data-cupon-campos hidden>
+              <label class="sr-only" for="cupon">Código del cupón</label>
+              <input id="cupon" data-cupon placeholder="Código del cupón" autocomplete="off" />
+              <button type="button" class="aplicar" data-aplicar>Aplicar</button>
+            </div>
+            <ul class="cupones" data-cupones></ul>
+            <p class="cupon-aviso" data-cupon-aviso role="status" aria-live="polite"></p>
+          </section>
+
+          <section class="caja caja-pago">
+            <fieldset class="pagos">
+              <legend>Forma de pago</legend>
+              <div data-metodos></div>
+            </fieldset>
+            <p class="nota-pago" data-nota-pago></p>
+          </section>
+
+          <p class="error" data-error role="alert" hidden></p>
+          <button type="submit" class="boton-oro ancho realizar" data-enviar>REALIZAR PAGO</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</PaginaSira>
+
+<script>
+  import { tienda } from '../../tienda.config';
+  import { crearCliente, formato, leerPerfil } from '../scripts/tienda-api';
+
+  // ---------- tipos de la Store API (lo que usa esta página) ----------
+  type Monto = { currency_code: string; currency_minor_unit: number };
+  type Item = {
+    key: string;
+    id: number;
+    name: string;
+    quantity: number;
+    quantity_limits?: { minimum: number; maximum: number; editable: boolean };
+    variation?: { attribute: string; value: string }[];
+    images: { thumbnail?: string; src?: string; alt?: string }[];
+    prices?: Monto & { price: string };
+    totals: Monto & { line_total: string; line_total_tax?: string };
+  };
+  type Tarifa = Monto & { rate_id: string; name: string; price: string; taxes?: string; selected: boolean };
+  type Paquete = { package_id: number; name: string; shipping_rates: Tarifa[] };
+  type CarritoC = {
+    items: Item[];
+    items_count: number;
+    needs_shipping?: boolean;
+    shipping_rates?: Paquete[];
+    coupons?: { code: string; totals: Monto & { total_discount: string; total_discount_tax?: string } }[];
+    payment_methods: string[];
+    totals: Monto & {
+      total_price: string;
+      total_items?: string;
+      total_items_tax?: string;
+      total_shipping?: string | null;
+      total_shipping_tax?: string | null;
+      total_tax?: string;
+      total_discount?: string;
+      total_discount_tax?: string;
+    };
+  };
+
+  // Métodos que no son pasarela (se pagan fuera de línea); los demás llevan a una página de pago.
+  const FUERA_DE_LINEA = ['cod', 'bacs', 'cheque'];
+  // Nombre de respaldo para pasarelas que no están en tienda.pagos.
+  const NOMBRES_RESPALDO: Record<string, string> = { afinia_gateway: 'Tarjeta de crédito o débito' };
+  const nombrePago = (id: string) => tienda.pagos[id] ?? NOMBRES_RESPALDO[id] ?? id;
+  const NOTAS_PAGO: Record<string, string> = {
+    cod: 'Paga al recibir su pedido.',
+    bacs: 'Al confirmar, le enviamos por correo los datos para hacer la transferencia.',
+  };
+
+  const raiz = document.querySelector<HTMLElement>('[data-compra]');
+  if (raiz) iniciar(raiz);
+
+  function iniciar(raiz: HTMLElement) {
+    const cliente = crearCliente(raiz.dataset.api!);
+    const enlaces: Record<string, string> = JSON.parse(raiz.dataset.enlaces || '{}');
+    const isoAWc = Object.fromEntries(JSON.parse(raiz.dataset.provincias || '[]')) as Record<string, string>;
+    const $ = <T extends HTMLElement = HTMLElement>(sel: string) => raiz.querySelector<T>(sel)!;
+    const form = $<HTMLFormElement>('[data-form]');
+    let carrito: CarritoC | null = null;
+    let ocupado = false;
+
+    const decodificar = (s: string) => new DOMParser().parseFromString(s, 'text/html').body.textContent?.trim() ?? s;
+    const suma = (...v: (string | null | undefined)[]) => String(v.reduce((a, b) => a + Number(b || 0), 0));
+    const avisarEncabezado = (n: number) => dispatchEvent(new CustomEvent('sira:carrito', { detail: n }));
+
+    // ---------- vistas ----------
+    function vista(cual: 'cargando' | 'vacio' | 'lleno' | 'gracias') {
+      $('[data-cargando]').hidden = cual !== 'cargando';
+      $('[data-vacio]').hidden = cual !== 'vacio';
+      $('[data-lleno]').hidden = cual !== 'lleno';
+      $('[data-gracias]').hidden = cual !== 'gracias';
+      $('[data-titulo]').textContent = cual === 'gracias' ? 'Pedido recibido' : 'Artículos en el Carrito';
+    }
+    function errorGeneral(texto: string) {
+      const e = $('[data-error-general]');
+      e.textContent = texto;
+      e.hidden = !texto;
+    }
+
+    // ---------- pintar ----------
+    function usar(c: CarritoC) {
+      carrito = c;
+      avisarEncabezado(c.items_count);
+      if (!c.items.length) {
+        vista('vacio');
+        return;
+      }
+      vista('lleno');
+      pintarItems(c);
+      pintarTotales(c);
+      pintarEnvio(c);
+      pintarCupones(c);
+      pintarPagos(c);
+    }
+
+    function pintarItems(c: CarritoC) {
+      const cuerpo = $('[data-items]');
+      const lineas = $('[data-lineas]');
+      cuerpo.replaceChildren();
+      lineas.replaceChildren();
+      for (const it of c.items) {
+        const nombre = decodificar(it.name);
+        const opciones = (it.variation ?? []).map((v) => `${decodificar(v.attribute)}: ${decodificar(v.value)}`).join(' · ');
+        const lineaTotal = suma(it.totals.line_total, it.totals.line_total_tax);
+        const unitario = it.prices?.price ?? String(Math.round(Number(lineaTotal) / Math.max(1, it.quantity)));
+        const m = it.prices ?? it.totals;
+        const max = it.quantity_limits?.maximum ?? 9999;
+        const editable = it.quantity_limits?.editable ?? true;
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="col-producto">
+            <div class="producto">
+              <span class="miniatura"></span>
+              <div class="producto-texto"><a class="producto-nombre"></a><span class="producto-opciones"></span></div>
+            </div>
+          </td>
+          <td class="col-precio"><span class="etiqueta-movil">Precio</span><span class="valor"></span></td>
+          <td class="col-cantidad">
+            <div class="cantidad" role="group">
+              <button type="button" class="menos">−</button>
+              <span class="numero" aria-live="polite"></span>
+              <button type="button" class="mas">+</button>
+            </div>
+          </td>
+          <td class="col-quitar"><button type="button" class="quitar"><img alt="" width="18" height="18" /></button></td>`;
+        const img = it.images?.[0]?.thumbnail || it.images?.[0]?.src;
+        if (img) {
+          const el = document.createElement('img');
+          el.src = img;
+          el.alt = '';
+          el.width = 82;
+          el.height = 82;
+          el.loading = 'lazy';
+          tr.querySelector('.miniatura')!.append(el);
+        }
+        const a = tr.querySelector<HTMLAnchorElement>('.producto-nombre')!;
+        a.textContent = nombre;
+        if (enlaces[it.id]) a.href = enlaces[it.id];
+        tr.querySelector('.producto-opciones')!.textContent = opciones;
+        tr.querySelector('.col-precio .valor')!.textContent = formato(unitario, m);
+        tr.querySelector('.numero')!.textContent = String(it.quantity);
+        tr.querySelector('.cantidad')!.setAttribute('aria-label', `Cantidad de ${nombre}`);
+        const menos = tr.querySelector<HTMLButtonElement>('.menos')!;
+        const mas = tr.querySelector<HTMLButtonElement>('.mas')!;
+        const quitar = tr.querySelector<HTMLButtonElement>('.quitar')!;
+        menos.setAttribute('aria-label', `Quitar una unidad de ${nombre}`);
+        mas.setAttribute('aria-label', `Agregar una unidad de ${nombre}`);
+        quitar.setAttribute('aria-label', `Quitar ${nombre} del carrito`);
+        quitar.querySelector('img')!.src = raiz.dataset.basurero!;
+        menos.disabled = !editable || it.quantity <= 1;
+        mas.disabled = !editable || it.quantity >= max;
+        menos.addEventListener('click', () => cambiar(it.key, it.quantity - 1));
+        mas.addEventListener('click', () => cambiar(it.key, it.quantity + 1));
+        quitar.addEventListener('click', () => cambiar(it.key, 0));
+        cuerpo.append(tr);
+
+        const li = document.createElement('li');
+        li.className = 'par linea';
+        const t = document.createElement('span');
+        t.textContent = `${it.quantity} × ${nombre}${opciones ? ` (${opciones})` : ''}`;
+        const v = document.createElement('span');
+        v.textContent = formato(lineaTotal, it.totals);
+        li.append(t, v);
+        lineas.append(li);
+      }
+    }
+
+    function tarifaElegida(c: CarritoC) {
+      const tarifas = (c.shipping_rates ?? []).flatMap((p) => p.shipping_rates);
+      return tarifas.find((t) => t.selected) ?? null;
+    }
+
+    function pintarTotales(c: CarritoC) {
+      const t = c.totals;
+      const subtotal =
+        t.total_items !== undefined
+          ? suma(t.total_items, t.total_items_tax)
+          : suma(...c.items.map((i) => suma(i.totals.line_total, i.totals.line_total_tax)));
+      const descuento = suma(t.total_discount, t.total_discount_tax);
+      const elegida = tarifaElegida(c);
+      let envio: string;
+      if (c.needs_shipping === false) envio = 'No aplica';
+      else if (elegida) envio = Number(suma(elegida.price, elegida.taxes)) === 0 ? 'Gratis' : formato(suma(t.total_shipping, t.total_shipping_tax), t);
+      else envio = 'Según su dirección';
+      const conImpuestos = t.total_tax !== undefined;
+      const valores: Record<string, string> = {
+        subtotal: formato(subtotal, t),
+        envio,
+        descuento: `−${formato(descuento, t)}`,
+        impuestos: conImpuestos ? `${formato(t.total_tax!, t)} (incluidos)` : '',
+        total: formato(t.total_price, t),
+      };
+      for (const [k, v] of Object.entries(valores)) {
+        $(`[data-t-${k}]`).textContent = v;
+        const s = raiz.querySelector<HTMLElement>(`[data-s-${k}]`);
+        if (s) s.textContent = v;
+      }
+      $('[data-fila-descuento]').hidden = $('[data-s-fila-descuento]').hidden = Number(descuento) <= 0;
+      $('[data-fila-impuestos]').hidden = $('[data-s-fila-impuestos]').hidden = !conImpuestos || Number(t.total_tax) === 0;
+    }
+
+    function pintarEnvio(c: CarritoC) {
+      const caja = $<HTMLFieldSetElement>('[data-envio-caja]');
+      const cont = $('[data-tarifas]');
+      caja.hidden = c.needs_shipping === false;
+      cont.replaceChildren();
+      const paquetes = (c.shipping_rates ?? []).filter((p) => p.shipping_rates.length);
+      if (!paquetes.length) {
+        const p = document.createElement('p');
+        p.className = 'sin-tarifas';
+        p.textContent = 'Complete su provincia, cantón y código postal para ver las opciones de envío.';
+        cont.append(p);
+        return;
+      }
+      for (const paq of paquetes) {
+        for (const r of paq.shipping_rates) {
+          const label = document.createElement('label');
+          label.className = 'tarifa';
+          const input = document.createElement('input');
+          input.type = 'radio';
+          input.name = `envio-${paq.package_id}`;
+          input.value = r.rate_id;
+          input.checked = r.selected;
+          input.addEventListener('change', () =>
+            actualizar(() => cliente.api<CarritoC>('/cart/select-shipping-rate', { package_id: paq.package_id, rate_id: r.rate_id })),
+          );
+          const precio = Number(suma(r.price, r.taxes));
+          const texto = document.createElement('span');
+          texto.textContent = `${decodificar(r.name)} ${precio === 0 ? '· Gratis' : `· ${formato(String(precio), r)}`}`;
+          label.append(input, texto);
+          cont.append(label);
+        }
+      }
+    }
+
+    function pintarCupones(c: CarritoC) {
+      const lista = $('[data-cupones]');
+      lista.replaceChildren();
+      for (const cu of c.coupons ?? []) {
+        const li = document.createElement('li');
+        const t = document.createElement('span');
+        t.textContent = `Cupón «${cu.code}»: −${formato(suma(cu.totals.total_discount, cu.totals.total_discount_tax), cu.totals)}`;
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'quitar-cupon';
+        b.textContent = 'Quitar';
+        b.setAttribute('aria-label', `Quitar el cupón ${cu.code}`);
+        b.addEventListener('click', () => actualizar(() => cliente.api<CarritoC>('/cart/remove-coupon', { code: cu.code })));
+        li.append(t, b);
+        lista.append(li);
+      }
+    }
+
+    function pintarPagos(c: CarritoC) {
+      const cont = $('[data-metodos]');
+      const antes = form.querySelector<HTMLInputElement>('input[name="payment_method"]:checked')?.value;
+      cont.replaceChildren();
+      if (!c.payment_methods.length) {
+        cont.textContent = 'No hay formas de pago disponibles en este momento.';
+      }
+      c.payment_methods.forEach((m, i) => {
+        const label = document.createElement('label');
+        label.className = 'tarifa';
+        const input = document.createElement('input');
+        input.type = 'radio';
+        input.name = 'payment_method';
+        input.value = m;
+        input.required = true;
+        input.checked = antes ? antes === m : i === 0;
+        input.addEventListener('change', notaPago);
+        const t = document.createElement('span');
+        t.textContent = nombrePago(m);
+        label.append(input, t);
+        cont.append(label);
+      });
+      if (!cont.querySelector('input:checked')) cont.querySelector<HTMLInputElement>('input')?.click();
+      notaPago();
+    }
+    function notaPago() {
+      const m = form.querySelector<HTMLInputElement>('input[name="payment_method"]:checked')?.value ?? '';
+      $('[data-nota-pago]').textContent = !m
+        ? ''
+        : FUERA_DE_LINEA.includes(m)
+          ? (NOTAS_PAGO[m] ?? '')
+          : 'Se le llevará a la página segura de pago.';
+    }
+
+    // ---------- acciones ----------
+    async function actualizar(accion: () => Promise<CarritoC>) {
+      if (ocupado) return;
+      ocupado = true;
+      raiz.setAttribute('aria-busy', 'true');
+      errorGeneral('');
+      try {
+        usar(await accion());
+      } catch (e) {
+        errorGeneral((e as Error).message || 'No se pudo actualizar el carrito. Intente de nuevo.');
+        if (carrito) usar(carrito);
+      } finally {
+        ocupado = false;
+        raiz.removeAttribute('aria-busy');
+      }
+    }
+    const cambiar = (key: string, cantidad: number) => actualizar(() => cliente.cambiar(key, cantidad) as Promise<CarritoC>);
+
+    // Envío: al cambiar provincia, cantón o código postal se le pasa la dirección a WooCommerce,
+    // que devuelve las tarifas de esa zona.
+    let espera: ReturnType<typeof setTimeout> | undefined;
+    const valor = (n: string) => (form.elements.namedItem(n) as HTMLInputElement | HTMLSelectElement | null)?.value.trim() ?? '';
+    function direccion() {
+      return {
+        first_name: valor('first_name'),
+        last_name: valor('last_name'),
+        company: '',
+        address_1: valor('address_1'),
+        address_2: valor('address_2'),
+        city: valor('city'),
+        state: valor('state'),
+        postcode: valor('postcode'),
+        country: valor('country') || tienda.pais.codigo,
+        phone: valor('phone'),
+      };
+    }
+    function enviarDireccion() {
+      clearTimeout(espera);
+      espera = setTimeout(() => {
+        if (!valor('state')) return;
+        const d = direccion();
+        actualizar(() =>
+          cliente.api<CarritoC>('/cart/update-customer', {
+            shipping_address: { country: d.country, state: d.state, city: d.city, postcode: d.postcode },
+          }),
+        );
+      }, 500);
+    }
+    form.querySelectorAll('[data-envio]').forEach((el) => el.addEventListener('change', enviarDireccion));
+
+    // Cupón
+    const abrirCupon = $<HTMLButtonElement>('[data-abrir-cupon]');
+    const campoCupon = $<HTMLInputElement>('[data-cupon]');
+    const avisoCupon = $('[data-cupon-aviso]');
+    abrirCupon.addEventListener('click', () => {
+      const abrir = $('[data-cupon-campos]').hidden;
+      $('[data-cupon-campos]').hidden = !abrir;
+      abrirCupon.setAttribute('aria-expanded', String(abrir));
+      if (abrir) campoCupon.focus();
+    });
+    async function aplicarCupon() {
+      const code = campoCupon.value.trim();
+      if (!code || ocupado) return;
+      avisoCupon.textContent = 'Aplicando…';
+      ocupado = true;
+      try {
+        usar(await cliente.api<CarritoC>('/cart/apply-coupon', { code }));
+        avisoCupon.textContent = 'Cupón aplicado.';
+        campoCupon.value = '';
+      } catch (e) {
+        avisoCupon.textContent = (e as Error).message || 'No se pudo aplicar el cupón.';
+      } finally {
+        ocupado = false;
+      }
+    }
+    $('[data-aplicar]').addEventListener('click', aplicarCupon);
+    campoCupon.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        aplicarCupon();
+      }
+    });
+
+    // «Proceder al pago»: baja al formulario y pone el foco en el primer campo.
+    $('[data-ir-pago]').addEventListener('click', (e) => {
+      e.preventDefault();
+      form.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+      form.querySelector<HTMLElement>('select, input')?.focus({ preventScroll: true });
+    });
+
+    // ---------- pago ----------
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const error = $('[data-error]');
+      const enviar = $<HTMLButtonElement>('[data-enviar]');
+      if (!form.checkValidity()) {
+        error.textContent = `Revise los campos marcados: todos son obligatorios${
+          tienda.pais.codigoPostal.ayuda ? ` (código postal: ${tienda.pais.codigoPostal.ayuda})` : ''
+        }.`;
+        error.hidden = false;
+        form.classList.add('validar');
+        form.querySelector<HTMLElement>(':invalid')?.focus();
+        return;
+      }
+      const d = direccion();
+      const metodo = valor('payment_method') || form.querySelector<HTMLInputElement>('input[name="payment_method"]:checked')?.value || '';
+      const email = valor('email');
+      error.hidden = true;
+      enviar.disabled = true;
+      enviar.textContent = 'Enviando…';
+      try {
+        const r = await cliente.api<{ order_id: number; status: string; payment_result?: { redirect_url?: string } }>(
+          '/checkout',
+          {
+            billing_address: { ...d, email },
+            shipping_address: d,
+            payment_method: metodo,
+            payment_data: [],
+            // WooCommerce no tiene campos de identificación: van al inicio de la nota del pedido.
+            customer_note: `Identificación: ${valor('tipo_id')} ${valor('numero_id')}`,
+          },
+        );
+        // Una pasarela lleva a su página segura de pago (otra página que no es la de «pedido recibido»).
+        const destino = r.payment_result?.redirect_url ?? '';
+        const esPaginaPropia = !destino || /order-received|pedido-recibido/.test(destino);
+        if (!esPaginaPropia) {
+          location.href = destino;
+          return;
+        }
+        avisarEncabezado(0);
+        $('[data-gracias-titulo]').textContent = `Gracias, pedido #${r.order_id}`;
+        $('[data-gracias-texto]').textContent =
+          metodo === 'bacs'
+            ? `Su pedido quedó registrado. Le enviamos a ${email} los datos para hacer la transferencia.`
+            : `Su pedido quedó registrado. Le confirmaremos la entrega a ${email} o al ${d.phone}.`;
+        vista('gracias');
+        form.reset();
+        form.classList.remove('validar');
+        $('[data-gracias]').focus();
+        scrollTo({ top: 0 });
+      } catch (err) {
+        error.textContent = (err as Error).message || 'No se pudo enviar el pedido. Intente de nuevo.';
+        error.hidden = false;
+        // El carrito pudo cambiar (stock, precios): se vuelve a leer.
+        cliente.api<CarritoC>('/cart').then(usar).catch(() => {});
+      } finally {
+        enviar.disabled = false;
+        enviar.textContent = 'REALIZAR PAGO';
+      }
+    });
+
+    // ---------- inicio ----------
+    // Con sesión, se llenan los campos con los datos guardados de la cuenta.
+    const perfil = leerPerfil();
+    if (perfil) {
+      const campos: Record<string, string> = {
+        first_name: perfil.nombre,
+        last_name: perfil.apellidos,
+        email: perfil.email,
+        phone: perfil.telefono,
+        state: isoAWc[perfil.provincia] ?? perfil.provincia,
+        city: perfil.ciudad,
+        postcode: perfil.postal,
+        address_1: perfil.direccion,
+      };
+      for (const [n, v] of Object.entries(campos)) {
+        const el = form.elements.namedItem(n) as HTMLInputElement | HTMLSelectElement | null;
+        if (el && v) el.value = v;
+      }
+    }
+
+    if (!cliente.tieneCarrito()) {
+      // Sin carrito todavía: no se crea uno solo por abrir la página.
+      vista('vacio');
+      avisarEncabezado(0);
+      return;
+    }
+    cliente
+      .api<CarritoC>('/cart')
+      .then((c) => {
+        usar(c);
+        if (valor('state')) enviarDireccion();
+      })
+      .catch((e) => {
+        vista('vacio');
+        errorGeneral(`No se pudo cargar el carrito: ${(e as Error).message}`);
+      });
+  }
+</script>
+
+<style>
+  .compra {
+    width: min(100% - 2 * var(--margen), 1312px);
+    margin-inline: auto;
+    padding: clamp(24px, 4.1vw, 59px) 0 clamp(48px, 3.5vw, 50px);
+    color: #0f0f0f;
+  }
+  .compra[aria-busy='true'] .lleno {
+    cursor: progress;
+  }
+  .titulo {
+    margin: 0 0 clamp(18px, 2.2vw, 31px);
+    font-size: clamp(30px, 2.8vw, 40px);
+    line-height: 1.5;
+    color: var(--tinta-fuerte);
+  }
+  .cargando {
+    font-size: 15px;
+    color: #6a635c;
+  }
+
+  /* ---------- botón dorado (Figma: #ceb04e, radio 9) ---------- */
+  .boton-oro {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 50px;
+    padding: 0 32px;
+    border: 0;
+    border-radius: 9px;
+    background: var(--oro-boton);
+    color: #fff;
+    font-family: var(--font-sans);
+    font-size: 15.7px;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background-color 0.2s;
+  }
+  .boton-oro:hover:not([disabled]) {
+    background: #b89a3d;
+  }
+  .boton-oro[disabled] {
+    opacity: 0.6;
+    cursor: progress;
+  }
+  .boton-oro.ancho {
+    width: 100%;
+  }
+
+  /* ---------- mensajes: vacío y gracias ---------- */
+  .mensaje {
+    max-width: 640px;
+    padding: clamp(32px, 5vw, 56px) clamp(20px, 4vw, 48px);
+    border-radius: 9px;
+    background: #f8f8f8;
+    font-size: 15px;
+    line-height: 1.7;
+    color: #333;
+  }
+  .mensaje:focus {
+    outline: none;
+  }
+  .mensaje-titulo {
+    margin: 0 0 6px;
+    font-size: clamp(26px, 2.2vw, 32px);
+    line-height: 1.3;
+    color: var(--tinta-fuerte);
+  }
+  .mensaje .boton-oro {
+    margin-top: 18px;
+  }
+  .error-general,
+  .error {
+    margin: 0 0 16px;
+    padding: 12px 16px;
+    border-radius: 9px;
+    background: #fbeeec;
+    color: #8a2c1f;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  /* ---------- filas ---------- */
+  .fila {
+    display: grid;
+    gap: 33px;
+    align-items: start;
+  }
+  @media (min-width: 1100px) {
+    .fila-carrito {
+      grid-template-columns: minmax(0, 800px) minmax(0, 485px);
+    }
+    .fila-pago {
+      grid-template-columns: minmax(0, 749px) minmax(0, 510px);
+      gap: 41px;
+      padding-inline: 6px;
+    }
+  }
+  .fila-pago {
+    margin-top: clamp(40px, 2.5vw, 36px);
+    scroll-margin-top: 24px;
+  }
+
+  /* ---------- tabla de artículos (Figma: 800 px, borde #b7b7b7, radio 9) ---------- */
+  .tabla-marco {
+    border: 1px solid #b7b7b7;
+    border-radius: 9px;
+    padding: 22px clamp(14px, 3.2vw, 36px) 12px clamp(14px, 3.2vw, 46px);
+  }
+  .tabla {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  .tabla th {
+    padding: 6px 8px 14px;
+    font-size: 18.5px;
+    font-weight: 600;
+    letter-spacing: 0.017em;
+    text-align: left;
+    color: #000;
+  }
+  .tabla th.col-producto {
+    padding-left: 105px;
+  }
+  /* Figma: «Precio» en x=483 y «Cantidad» en x=738 (tabla desde x=64) */
+  @media (min-width: 641px) {
+    .tabla {
+      table-layout: fixed;
+    }
+    .tabla th:nth-child(2) {
+      width: 30%;
+    }
+    .tabla th:nth-child(3) {
+      width: 120px;
+    }
+    .tabla th:nth-child(4) {
+      width: 48px;
+    }
+  }
+  .tabla :global(td) {
+    padding: 12px 8px;
+    border-top: 1px solid #ececec;
+    vertical-align: middle;
+    font-size: 12.95px;
+    font-weight: 500;
+    color: #333;
+  }
+  .tabla :global(tbody tr:first-child td) {
+    border-top: 0;
+  }
+  .tabla :global(.producto) {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+  }
+  .tabla :global(.miniatura) {
+    flex: none;
+    width: 82px;
+    height: 82px;
+    border: 1px solid #dddddd;
+    border-radius: 9px;
+    background: #ebedef;
+    overflow: hidden;
+  }
+  .tabla :global(.miniatura img) {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .tabla :global(.producto-texto) {
+    display: grid;
+    gap: 4px;
+  }
+  .tabla :global(.producto-nombre) {
+    color: #333;
+    text-decoration: none;
+  }
+  .tabla :global(.producto-nombre[href]:hover) {
+    text-decoration: underline;
+  }
+  .tabla :global(.producto-opciones) {
+    font-size: 12px;
+    color: #868686;
+  }
+  .tabla :global(.etiqueta-movil) {
+    display: none;
+  }
+  .tabla :global(.cantidad) {
+    display: inline-grid;
+    grid-template-columns: 28px 30px 28px;
+    align-items: center;
+    height: 30px;
+    border: 1px solid #b7b7b7;
+    border-radius: 9px;
+  }
+  .tabla :global(.cantidad button),
+  .tabla :global(.quitar) {
+    display: grid;
+    place-items: center;
+    height: 100%;
+    padding: 0;
+    border: 0;
+    background: none;
+    font-family: var(--font-sans);
+    font-size: 17px;
+    color: #000;
+    cursor: pointer;
+  }
+  .tabla :global(.cantidad button:disabled) {
+    color: #c4c4c4;
+    cursor: default;
+  }
+  .tabla :global(.numero) {
+    font-size: 16px;
+    font-weight: 600;
+    text-align: center;
+    color: #000;
+  }
+  .tabla :global(.quitar) {
+    width: 36px;
+    height: 36px;
+    border-radius: 9px;
+  }
+  .tabla :global(.quitar:hover) {
+    background: #f4f4f4;
+  }
+  .compra[aria-busy='true'] :global(.cantidad button),
+  .compra[aria-busy='true'] :global(.quitar) {
+    pointer-events: none;
+    opacity: 0.5;
+  }
+
+  /* ---------- detalles de la compra (Figma: caja #f8f8f8 485×335) ---------- */
+  .detalles-compra {
+    padding: 25px 35px 35px;
+    border-radius: 9px;
+    background: #f8f8f8;
+  }
+  .detalles-compra h2,
+  .campos h2 {
+    margin: 0 0 22px;
+    font-size: clamp(19px, 1.55vw, 22.2px);
+    font-weight: 600;
+    letter-spacing: 0.017em;
+    color: #181717;
+  }
+  .totales {
+    display: grid;
+    gap: 20px;
+    margin: 0 0 22px;
+  }
+  .totales div {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .totales dt {
+    font-size: 16.6px;
+    font-weight: 700;
+    letter-spacing: 0.027em;
+  }
+  .totales .normal dt {
+    font-weight: 600;
+  }
+  .totales dd {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 700;
+    text-align: right;
+    color: #333;
+  }
+  .totales div[hidden] {
+    display: none;
+  }
+  .totales .total {
+    padding-top: 14px;
+    border-top: 1px solid #e3e3e3;
+  }
+
+  /* ---------- formulario (Figma: campos 749×58, borde #dbdbdb, radio 9) ---------- */
+  .campos {
+    display: grid;
+    gap: 23px;
+  }
+  .campos h2 {
+    margin-bottom: 4px;
+    color: #0f0f0f;
+  }
+  .campo {
+    display: grid;
+    gap: 8px;
+  }
+  .campo > span {
+    font-size: 16.4px;
+    font-weight: 600;
+    color: #222;
+  }
+  .campo input,
+  .campo select,
+  .cupon-campos input {
+    width: 100%;
+    height: 58px;
+    padding: 0 22px;
+    border: 1.37px solid #dbdbdb;
+    border-radius: 9px;
+    background: #fff;
+    font-family: var(--font-sans);
+    font-size: 16.4px;
+    font-weight: 500;
+    color: #222;
+  }
+  .campo input::placeholder,
+  .cupon-campos input::placeholder {
+    color: #8a8a8a;
+  }
+  .campo select {
+    appearance: none;
+    padding-right: 48px;
+    background: #fff var(--flecha) no-repeat right 22px center / 14px auto;
+    color: #525252;
+  }
+  .campo input:focus,
+  .campo select:focus,
+  .cupon-campos input:focus {
+    border-color: var(--oro-boton);
+    outline: 2px solid color-mix(in srgb, var(--oro-boton) 35%, transparent);
+    outline-offset: 0;
+  }
+  .validar :invalid {
+    border-color: #c0392b;
+  }
+
+  /* ---------- sumatoria (Figma: cajas #f8f8f8 de 510 px) ---------- */
+  .sumatoria {
+    display: grid;
+    gap: 13px;
+  }
+  .caja {
+    padding: 25px clamp(18px, 2.4vw, 35px);
+    border-radius: 9px;
+    background: #f8f8f8;
+  }
+  .titulo-oro {
+    margin: 0 0 20px;
+    font-size: clamp(19px, 1.52vw, 21.9px);
+    font-weight: 600;
+    letter-spacing: 0.017em;
+    color: var(--oro-boton);
+  }
+  .par {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    margin: 0;
+    font-size: 16.4px;
+    font-weight: 700;
+    color: #333;
+  }
+  .par > span:last-child {
+    text-align: right;
+    white-space: nowrap;
+  }
+  .par[hidden] {
+    display: none;
+  }
+  .par.cabeza {
+    color: #0f0f0f;
+    letter-spacing: 0.027em;
+  }
+  .lineas {
+    display: grid;
+    gap: 10px;
+    margin: 18px 0;
+    padding: 0 0 18px;
+    border-bottom: 1px solid #e3e3e3;
+    list-style: none;
+  }
+  .lineas :global(.linea) {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    font-size: 14.6px;
+    font-weight: 400;
+    letter-spacing: 0.027em;
+    color: #868686;
+  }
+  .lineas :global(.linea span:last-child) {
+    flex: none;
+    font-weight: 700;
+    color: #333;
+  }
+  .caja-pedido > * + * {
+    margin-top: 16px;
+  }
+  .caja-pedido .lineas {
+    margin-top: 18px;
+  }
+  .par.fuerte {
+    color: #0f0f0f;
+  }
+  .par.total {
+    padding-top: 16px;
+    border-top: 1px solid #e3e3e3;
+  }
+  .envio,
+  .pagos {
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+  .envio {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 12px 24px;
+  }
+  .envio[hidden] {
+    display: none;
+  }
+  .envio legend,
+  .pagos legend {
+    float: left;
+    padding: 0;
+    font-size: 16.4px;
+    font-weight: 600;
+    letter-spacing: 0.027em;
+    color: #868686;
+  }
+  .pagos legend {
+    float: none;
+    margin-bottom: 14px;
+    font-weight: 700;
+    color: #0f0f0f;
+  }
+  .tarifas,
+  [data-metodos] {
+    display: grid;
+    gap: 12px;
+  }
+  .tarifas {
+    justify-self: end;
+  }
+  .compra :global(.tarifa) {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #333;
+    cursor: pointer;
+  }
+  .pagos :global(.tarifa) {
+    font-size: 15px;
+  }
+  .compra :global(.tarifa input) {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    accent-color: #2d4b89;
+  }
+  .compra :global(.sin-tarifas) {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.5;
+    color: #6a635c;
+  }
+  .nota-pago {
+    margin: 14px 0 0;
+    font-size: 13px;
+    line-height: 1.5;
+    color: #6a635c;
+  }
+  .nota-pago:empty {
+    display: none;
+  }
+
+  /* cupón */
+  .caja-cupon {
+    padding-block: 18px;
+  }
+  .cupon-pregunta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 12px;
+    margin: 0;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.027em;
+    color: #868686;
+  }
+  .enlace-cupon {
+    padding: 0;
+    border: 0;
+    background: none;
+    font: inherit;
+    color: #0f0f0f;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    cursor: pointer;
+  }
+  .cupon-campos {
+    display: flex;
+    gap: 10px;
+    margin-top: 14px;
+  }
+  .cupon-campos[hidden] {
+    display: none;
+  }
+  .cupon-campos input {
+    height: 44px;
+    padding: 0 16px;
+    font-size: 14px;
+  }
+  .aplicar {
+    flex: none;
+    min-width: 75px;
+    padding: 0 16px;
+    border: 0;
+    border-radius: 9px;
+    background: var(--oro-boton);
+    color: #fff;
+    font-family: var(--font-sans);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .cupones {
+    display: grid;
+    gap: 6px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: 13px;
+    font-weight: 600;
+    color: #333;
+  }
+  .cupones:not(:empty) {
+    margin-top: 12px;
+  }
+  .cupones :global(li) {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .cupones :global(.quitar-cupon) {
+    padding: 0;
+    border: 0;
+    background: none;
+    font: inherit;
+    font-weight: 500;
+    color: #8a2c1f;
+    text-decoration: underline;
+    cursor: pointer;
+  }
+  .cupon-aviso {
+    margin: 0;
+    font-size: 12px;
+    color: #6a635c;
+  }
+  .cupon-aviso:not(:empty) {
+    margin-top: 8px;
+  }
+  .realizar {
+    min-height: 49px;
+    font-size: 15.5px;
+  }
+  .sumatoria .error {
+    margin: 0;
+  }
+
+  /* ---------- celular: la tabla se vuelve tarjetas ---------- */
+  @media (max-width: 640px) {
+    .tabla-marco {
+      padding: 6px 14px;
+    }
+    .tabla thead {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+    }
+    .tabla :global(tbody tr) {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      align-items: center;
+      gap: 10px 8px;
+      padding: 14px 0;
+      border-top: 1px solid #ececec;
+    }
+    .tabla :global(tbody tr:first-child) {
+      border-top: 0;
+    }
+    .tabla :global(td) {
+      padding: 0;
+      border: 0;
+    }
+    .tabla :global(td.col-producto) {
+      grid-column: 1 / -1;
+    }
+    .tabla :global(.miniatura) {
+      width: 72px;
+      height: 72px;
+    }
+    .tabla :global(.producto-nombre) {
+      font-size: 14px;
+    }
+    .tabla :global(.etiqueta-movil) {
+      display: inline;
+      margin-right: 8px;
+      color: #868686;
+      font-weight: 400;
+    }
+    .tabla :global(.col-precio) {
+      font-size: 14px;
+    }
+    .tabla :global(.cantidad) {
+      grid-template-columns: 40px 32px 40px;
+      height: 40px;
+    }
+    .tabla :global(.quitar) {
+      width: 44px;
+      height: 44px;
+    }
+    .detalles-compra {
+      padding: 22px 20px 24px;
+    }
+    .envio {
+      grid-template-columns: 1fr;
+    }
+    .envio legend {
+      float: none;
+      margin-bottom: 10px;
+    }
+    .tarifas {
+      justify-self: stretch;
+    }
+  }
+</style>

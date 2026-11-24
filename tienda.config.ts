@@ -6,11 +6,12 @@
 
 export const tienda = {
   marca: {
-    nombre: 'Mi Tienda',
+    nombre: 'SIRA',
     /** Ruta a un logo en /public (SVG o PNG). Vacío = se muestra el nombre como texto. */
-    logo: '',
+    logo: '/img/logo-sira.png',
     /** Descripción para Google y al compartir el enlace. */
-    descripcion: 'Descubra nuestros productos deslizando: a la derecha al carrito, arriba a favoritos.',
+    descripcion:
+      'SIRA Conscious Apparel: piezas únicas y prendas reversibles diseñadas con intención desde Costa Rica.',
   },
 
   /** App instalable (PWA): «Agregar a la pantalla de inicio» en el celular. */
@@ -20,47 +21,47 @@ export const tienda = {
     /** Ícono cuadrado en /public (SVG o PNG de 512 px o más). */
     icono: '/favicon.svg',
     /** Fondo detrás del ícono en Android/iPhone (se ve en los bordes). */
-    fondoIcono: '#ffffff',
+    fondoIcono: '#fdfaf6',
     /** Fondo de la pantalla mientras abre la app. */
-    fondo: '#ffffff',
+    fondo: '#fdfaf6',
   },
 
   /** SEO: cómo aparece la tienda en Google y al compartir un enlace. */
   seo: {
     /** Título de la portada en Google (hasta ~60 caracteres). Vacío = nombre de la marca. */
-    tituloInicio: '',
+    tituloInicio: 'SIRA · Piezas únicas y prendas reversibles · Costa Rica',
     /** Imagen al compartir la portada (1200×630, archivo en /public). Vacío = foto del primer producto. */
     imagenCompartir: '',
     /** Perfiles oficiales (Facebook, Instagram, TikTok…) para los datos estructurados. */
-    redes: [] as string[],
+    redes: ['https://www.instagram.com/siraconsciousapparel/'] as string[],
   },
 
   /** Colores de la marca. Se aplican a toda la tienda. */
   colores: {
     /** Títulos, precios y textos fuertes. */
-    primario: '#0a4383',
+    primario: '#1c1a18',
     /** Íconos y enlaces secundarios. */
-    secundario: '#0474ba',
+    secundario: '#6a635c',
     /** Botones principales, contadores y «pasar». */
-    acento: '#ed2853',
+    acento: '#1c1a18',
     /** Botones principales al pasar el mouse. */
-    acentoOscuro: '#d11a43',
+    acentoOscuro: '#000000',
     /** Texto normal. */
-    texto: '#526377',
+    texto: '#292621',
     /** Bordes suaves. */
-    borde: 'rgba(4, 116, 186, 0.29)',
+    borde: '#e7e2db',
     /** Fondo suave de las fotos y del degradado de la página. */
-    suave: '#e7f1ff',
+    suave: '#f7f2eb',
     /** «Al carrito» y disponibilidad. */
-    exito: '#17a35c',
-    /** Favoritos. */
-    favorito: '#f0a500',
+    exito: '#5f7a4e',
+    /** Favoritos y etiqueta «Reversible». */
+    favorito: '#ac8338',
   },
 
   /** Tipografías de Google Fonts (familia y pesos). */
   fuentes: {
-    texto: { familia: 'Inter', pesos: [400, 500, 600, 700] },
-    titulos: { familia: 'Sarabun', pesos: [500, 800] },
+    texto: { familia: 'Montserrat', pesos: [400, 500, 600, 700] },
+    titulos: { familia: 'Cormorant Garamond', pesos: [300, 400] },
   },
 
   /** País de envío: formatos, moneda y regiones del formulario de entrega. */
@@ -69,16 +70,17 @@ export const tienda = {
     locale: 'es-CR', // formato de números y fechas
     /** Provincias / estados con el código que usa WooCommerce (Ajustes → General). */
     regiones: [
-      ['CR-SJ', 'San José'],
-      ['CR-A', 'Alajuela'],
-      ['CR-C', 'Cartago'],
-      ['CR-H', 'Heredia'],
-      ['CR-G', 'Guanacaste'],
-      ['CR-P', 'Puntarenas'],
-      ['CR-L', 'Limón'],
+      // Códigos que acepta ESTE WooCommerce (comprobado con la Store API; otras tiendas usan CR-SJ…).
+      ['SJ', 'San José'],
+      ['AL', 'Alajuela'],
+      ['CG', 'Cartago'],
+      ['HD', 'Heredia'],
+      ['GT', 'Guanacaste'],
+      ['PT', 'Puntarenas'],
+      ['LM', 'Limón'],
     ] as [string, string][],
     etiquetaRegion: 'Provincia',
-    etiquetaCiudad: 'Cantón / ciudad',
+    etiquetaCiudad: 'Cantón',
     codigoPostal: {
       /** WooCommerce lo exige para algunos países (para CR sí). */
       requerido: true,
@@ -89,6 +91,7 @@ export const tienda = {
 
   /** Nombres de los métodos de pago (id de WooCommerce → texto que ve el cliente). */
   pagos: {
+    afinia_gateway: 'Tarjeta de crédito o débito',
     cod: 'Pago contra entrega',
     bacs: 'Transferencia bancaria',
     cheque: 'Cheque',
@@ -98,7 +101,7 @@ export const tienda = {
    * Prefijo de lo que se guarda en el navegador (carrito, favoritos, sesión).
    * Cambiarlo si hay dos tiendas en el mismo dominio.
    */
-  prefijo: 'tienda',
+  prefijo: 'sira',
 };
 
 export type ConfigTienda = typeof tienda;

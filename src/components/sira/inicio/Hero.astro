@@ -1,0 +1,132 @@
+---
+// Portada del inicio (Figma: «Section» 147:5227). Tres fotos lado a lado, un velo oscuro y la marca.
+// En el Figma la fila mide 1624 px de ancho (más que el frame de 1440) y se recorta a los lados:
+// aquí la fila mide 1624/1440 del ancho y se corre a la izquierda 95/1440.
+import { Image } from 'astro:assets';
+import { rutas } from '../../../data/rutas';
+import imgEditorial from '../../../assets/sira/editorial-estampado.png';
+import imgVino from '../../../assets/sira/chaqueta-vino-dorado.png';
+import imgDurazno from '../../../assets/sira/chaqueta-durazno.png';
+
+const fotos = [
+  { src: imgEditorial, alt: 'SIRA Conscious Apparel: editorial con estampado' },
+  { src: imgVino, alt: 'SIRA: chaqueta reversible vino con fondo dorado' },
+  { src: imgDurazno, alt: 'SIRA: chaqueta bordada durazno' },
+];
+---
+<section class="hero" aria-labelledby="hero-titulo">
+  <div class="fila">
+    {fotos.map((f, i) => (
+      <div class:list={['foto', { centro: i === 1 }]}>
+        <Image
+          src={f.src}
+          alt={f.alt}
+          format="webp"
+          widths={[480, 640, 900, 1200]}
+          sizes={i === 1 ? '(max-width: 700px) 100vw, 38vw' : '(max-width: 700px) 1px, 38vw'}
+          loading="eager"
+          fetchpriority={i === 1 ? 'high' : 'auto'}
+        />
+      </div>
+    ))}
+  </div>
+  <div class="velo" aria-hidden="true"></div>
+  <div class="texto">
+    <h1 id="hero-titulo" class="marca serif">SIRA</h1>
+    <p class="lema serif">Reversible by nature. Expressive by design.</p>
+    <a class="descubrir" href={rutas.reversibles}>Descubrir SIRA <span aria-hidden="true">→</span></a>
+  </div>
+</section>
+
+<style>
+  .hero {
+    position: relative;
+    height: clamp(460px, 42vw, 604px);
+    overflow: hidden;
+    background: var(--arena-oscura);
+  }
+  .fila {
+    position: absolute;
+    inset: 0 auto 0 calc(-95 / 1440 * 100%);
+    width: calc(1624 / 1440 * 100%);
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .foto {
+    min-width: 0;
+    overflow: hidden;
+  }
+  .foto :global(img) {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .velo {
+    position: absolute;
+    inset: 0;
+    background: rgba(28, 26, 24, 0.22);
+  }
+  .texto {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    padding: 0 20px;
+    text-align: center;
+    color: #fffdfb;
+  }
+  .marca {
+    margin: 0;
+    /* El espaciado de letras deja aire después de la última: se compensa a la izquierda. */
+    padding-left: 0.22em;
+    font-size: clamp(56px, 6.58vw, 94.73px);
+    font-weight: 300;
+    line-height: 1;
+    letter-spacing: 0.22em;
+  }
+  .lema {
+    margin: 13.5px 0 0;
+    font-size: clamp(17px, 1.41vw, 20.3px);
+    font-weight: 300;
+    line-height: 27.1px;
+    letter-spacing: 0.51px;
+  }
+  .descubrir {
+    display: inline-flex;
+    align-items: center;
+    gap: 6.77px;
+    margin-top: 27px;
+    padding-bottom: 4.7px;
+    border-bottom: 1px solid rgba(255, 253, 251, 0.85);
+    font-size: 9.3px;
+    font-weight: 500;
+    line-height: 14px;
+    letter-spacing: 1.86px;
+    text-transform: uppercase;
+    text-decoration: none;
+    color: #fffdfb;
+  }
+  .descubrir:hover {
+    border-bottom-color: #fffdfb;
+  }
+
+  /* Celular: solo la foto del centro, a todo el ancho. */
+  @media (max-width: 700px) {
+    .hero {
+      height: min(140vw, 560px);
+    }
+    .fila {
+      inset: 0;
+      width: 100%;
+      grid-template-columns: 1fr;
+    }
+    .foto:not(.centro) {
+      display: none;
+    }
+    .descubrir {
+      font-size: 10px;
+    }
+  }
+</style>

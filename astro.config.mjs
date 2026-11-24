@@ -30,7 +30,7 @@ export default defineConfig({
       name: f.titulos.familia,
       cssVariable: '--fuente-titulos',
       weights: f.titulos.pesos,
-      styles: ['normal'],
+      styles: ['normal', 'italic'],
       fallbacks: ['system-ui', 'sans-serif'],
     },
   ],

@@ -1,0 +1,23 @@
+---
+// /novedades/ (Figma: «Novedades» 147:3915): las piezas de la categoría de novedades de WooCommerce.
+// Si esa categoría todavía no tiene piezas, se muestra todo el catálogo.
+import PaginaSira from '../layouts/PaginaSira.astro';
+import Listado from '../components/sira/listado/Listado.astro';
+import { getProductos } from '../data/tienda';
+import { categoriaNovedades } from '../data/sira';
+import { tienda } from '../../tienda.config';
+
+const todos = await getProductos();
+const nuevos = todos.filter((p) => p.categoriasSlug.includes(categoriaNovedades));
+const productos = nuevos.length ? nuevos : todos;
+const texto =
+  'Cada prenda se produce en series muy cortas o como pieza única, combinando textiles seleccionados y confección consciente.';
+---
+<PaginaSira
+  title={`Nuevas piezas | ${tienda.marca.nombre}`}
+  description={`Novedades de ${tienda.marca.nombre}: ${texto}`}
+  activo="novedades"
+  imagen={productos[0]?.imagen?.src}
+>
+  <Listado etiqueta="Novedades" titulo="Nuevas piezas" texto={texto} productos={productos} />
+</PaginaSira>

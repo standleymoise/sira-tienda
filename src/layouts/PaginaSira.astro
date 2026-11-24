@@ -1,0 +1,40 @@
+---
+// Página SIRA: layout base (SEO, fuentes, PWA) + encabezado + contenido + pie.
+import Base from './Base.astro';
+import Encabezado from '../components/sira/Encabezado.astro';
+import Pie from '../components/sira/Pie.astro';
+import type { IdMenu } from '../data/sira';
+
+interface Props {
+  title: string;
+  description?: string;
+  noindex?: boolean;
+  imagen?: string;
+  tipo?: 'website' | 'product';
+  jsonLd?: object | object[];
+  /** Sección del menú que se marca como activa. */
+  activo?: IdMenu;
+  /** Fondo de la página (el Figma usa crema; la ficha y el carrito, blanco). */
+  fondo?: 'crema' | 'blanco';
+}
+const { activo, fondo = 'crema', ...base } = Astro.props;
+---
+<Base {...base}>
+  <div class:list={['pagina', `fondo-${fondo}`]}>
+    <Encabezado activo={activo} />
+    <main id="contenido">
+      <slot />
+    </main>
+    <Pie />
+  </div>
+</Base>
+
+<style>
+  .fondo-blanco {
+    background: #fff;
+  }
+  .fondo-blanco :global(.encabezado),
+  .fondo-blanco :global(.pie) {
+    background: #fff;
+  }
+</style>

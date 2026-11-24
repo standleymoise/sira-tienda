@@ -1,0 +1,137 @@
+---
+// Universo reversible (Figma: 147:5121, 1440×960, fondo #f0ede6): textos a la izquierda y las dos
+// caras de una chaqueta reversible, escalonadas.
+import { Image } from 'astro:assets';
+import { rutas } from '../../../data/rutas';
+import imgCaraA from '../../../assets/sira/reversible-cara-a.png';
+import imgCaraB from '../../../assets/sira/reversible-cara-b.png';
+---
+<section class="reversible" aria-labelledby="reversible-titulo">
+  <div class="contenedor rejilla">
+    <div class="textos">
+      <p class="etiqueta">El arte de transformarse</p>
+      <h2 id="reversible-titulo" class="titulo serif">Dos caras.<br />Una misma<br />esencia.</h2>
+      <p class="parrafo">Una pieza, dos posibilidades.<br />Descubre otra manera de vestir SIRA.</p>
+      <ul class="enlaces">
+        <li><a class="enlace-flecha" href={`${rutas.reversibles}?genero=mujer#piezas`}>Reversibles de mujer<span aria-hidden="true">↗</span></a></li>
+        <li><a class="enlace-flecha" href={`${rutas.reversibles}?genero=hombre#piezas`}>Reversibles de hombre<span aria-hidden="true">↗</span></a></li>
+        <li><a class="historia" href={`${rutas.reversibles}#historia`}>La historia reversible<span aria-hidden="true">↗</span></a></li>
+      </ul>
+    </div>
+    <div class="foto cara-a">
+      <Image
+        src={imgCaraA}
+        alt="Chaqueta reversible SIRA, cara A"
+        format="webp"
+        widths={[300]}
+        sizes="(max-width: 860px) 46vw, 405px"
+        loading="lazy"
+      />
+    </div>
+    <div class="foto cara-b">
+      <Image
+        src={imgCaraB}
+        alt="Chaqueta reversible SIRA, cara B"
+        format="webp"
+        widths={[405, 810]}
+        sizes="(max-width: 860px) 46vw, 405px"
+        loading="lazy"
+      />
+    </div>
+  </div>
+</section>
+
+<style>
+  .reversible {
+    padding: 115px 0 148px;
+    background: var(--piedra);
+  }
+  .rejilla {
+    display: grid;
+    grid-template-columns: minmax(0, 408fr) minmax(0, 405fr) minmax(0, 405fr);
+    column-gap: 24px;
+    align-items: start;
+  }
+  .titulo {
+    margin: 48px 0 0 -3px;
+    font-size: clamp(44px, 4.72vw, 68px);
+    line-height: 1.08;
+  }
+  .parrafo {
+    margin: 39px 0 0;
+    font-size: 14px;
+    line-height: 23.8px;
+  }
+  .enlaces {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 25px;
+    margin: 79px 0 0;
+    padding: 0;
+    list-style: none;
+  }
+  .enlace-flecha {
+    padding-bottom: 17px;
+  }
+  .historia {
+    display: inline-block;
+    margin-top: 43px;
+    font-size: 12px;
+    line-height: 20.4px;
+    text-decoration: none;
+    color: var(--tinta);
+  }
+  .historia span {
+    margin-left: 1.6em;
+  }
+  .historia:hover,
+  .enlace-flecha:hover {
+    color: var(--oro);
+  }
+  .foto {
+    aspect-ratio: 405 / 600;
+    overflow: hidden;
+    background: var(--arena);
+  }
+  .foto :global(img) {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .cara-a {
+    margin-top: 1px;
+  }
+  .cara-b {
+    margin-top: 96px;
+  }
+
+  @media (max-width: 860px) {
+    .reversible {
+      padding: 72px 0 80px;
+    }
+    .rejilla {
+      grid-template-columns: 1fr 1fr;
+      column-gap: 12px;
+    }
+    .textos {
+      grid-column: 1 / -1;
+      margin-bottom: 48px;
+    }
+    .titulo {
+      margin-top: 24px;
+    }
+    .parrafo {
+      margin-top: 24px;
+    }
+    .enlaces {
+      margin-top: 40px;
+    }
+    .historia {
+      margin-top: 16px;
+    }
+    .cara-b {
+      margin-top: 48px;
+    }
+  }
+</style>

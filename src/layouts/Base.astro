@@ -108,16 +108,68 @@ const ld = jsonLd ? JSON.stringify(jsonLd).replaceAll('<', '\\u003c') : '';
     -webkit-text-size-adjust: 100%;
     /* Mezcla del color suave con blanco, para fondos de fotos y tarjetas */
     --suave-claro: color-mix(in srgb, var(--suave) 70%, #fff);
+
+    /* Paleta SIRA (Figma) */
+    --crema: #fdfaf6;
+    --crema-clara: #fffdfb;
+    --tinta: #292621;
+    --tinta-fuerte: #1c1a18;
+    --gris: #6a635c;
+    --gris-claro: #666157;
+    --linea: #e7e2db;
+    --linea-tinta: rgba(41, 38, 33, 0.18);
+    --arena: #f7f2eb;
+    --arena-oscura: #efe8df;
+    --piedra: #f0ede6;
+    --lino: #ebe7dd;
+    --oro: #ac8338;
+    --oro-claro: #eab96e;
+    --oro-boton: #ceb04e;
+
+    /* Medidas del Figma (escritorio 1440): márgenes de 80 px, contenido de 1280 */
+    --margen: clamp(20px, 5.56vw, 80px);
+    --ancho: 1280px;
   }
   body {
     margin: 0;
     font-family: var(--font-sans);
-    color: var(--texto);
+    color: var(--tinta);
     overflow-x: hidden;
-    background:
-      radial-gradient(120% 55% at 50% 0%, var(--suave) 0%, transparent 70%),
-      linear-gradient(180deg, color-mix(in srgb, var(--suave) 40%, #fff), #fff);
+    background: var(--crema);
     min-height: 100dvh;
+  }
+  h1,
+  h2,
+  h3 {
+    font-weight: 400;
+  }
+  .contenedor {
+    width: min(100% - 2 * var(--margen), var(--ancho));
+    margin-inline: auto;
+  }
+  /* Etiquetas pequeñas en mayúsculas (Figma: Montserrat 500 10–11 px) */
+  .etiqueta {
+    margin: 0;
+    font-family: var(--font-sans);
+    font-size: 10px;
+    font-weight: 500;
+    line-height: 1.7;
+    letter-spacing: 0;
+    text-transform: uppercase;
+    color: var(--tinta);
+  }
+  .etiqueta-espaciada {
+    margin: 0;
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 1.5;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: var(--gris);
+  }
+  .serif {
+    font-family: var(--font-alt);
+    font-weight: 400;
   }
   img {
     display: block;
@@ -131,15 +183,17 @@ const ld = jsonLd ? JSON.stringify(jsonLd).replaceAll('<', '\\u003c') : '';
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-family: var(--font-alt);
-    font-weight: 600;
-    font-size: 17px;
-    line-height: 1.2;
-    color: #fff;
+    font-family: var(--font-sans);
+    font-weight: 500;
+    font-size: 12.9px;
+    line-height: 1.5;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--crema);
     background: var(--acento);
     border: 1px solid var(--acento);
-    border-radius: 999px;
-    padding: 15px 32px;
+    border-radius: 0;
+    padding: 13px 38px;
     text-decoration: none;
     cursor: pointer;
     transition:
@@ -151,15 +205,44 @@ const ld = jsonLd ? JSON.stringify(jsonLd).replaceAll('<', '\\u003c') : '';
     border-color: var(--acento-oscuro);
   }
   .btn-borde {
-    background: #fff;
+    background: transparent;
     color: var(--acento);
   }
   .btn-borde:hover {
-    background: #fff;
-    color: var(--acento-oscuro);
+    background: var(--acento);
+    color: var(--crema);
+  }
+  /* Enlace con línea debajo (Figma: «Descubrir la colección →», «Ver piezas →») */
+  .enlace-linea {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding-bottom: 5.6px;
+    border-bottom: 1px solid currentColor;
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 1.5;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    text-decoration: none;
+    color: var(--tinta-fuerte);
+  }
+  /* Enlace con flecha ↗ y separador corto (Figma: «Descubrir la colección    ↗») */
+  .enlace-flecha {
+    display: inline-block;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--linea-tinta);
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.7;
+    text-decoration: none;
+    color: var(--tinta);
+  }
+  .enlace-flecha span {
+    margin-left: 1.6em;
   }
   :focus-visible {
-    outline: 3px solid color-mix(in srgb, var(--acento) 45%, #fff);
+    outline: 2px solid var(--oro);
     outline-offset: 2px;
   }
   .sr-only {
@@ -172,6 +255,11 @@ const ld = jsonLd ? JSON.stringify(jsonLd).replaceAll('<', '\\u003c') : '';
     clip: rect(0, 0, 0, 0);
     white-space: nowrap;
     border: 0;
+  }
+  /* Aviso «Instalar app» abajo: arriba tapaba el encabezado editorial */
+  .instalar-app[data-banner-app] {
+    top: auto !important;
+    bottom: max(10px, env(safe-area-inset-bottom));
   }
   @media (prefers-reduced-motion: reduce) {
     *,

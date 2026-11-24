@@ -1,0 +1,141 @@
+---
+// Colección actual (Figma: «Colección Entre Líneas» 147:5110, 1440×960): foto grande 624×780,
+// textos a la derecha, foto de detalle 350×258 abajo a la derecha, pie editorial e índice.
+import { Image } from 'astro:assets';
+import { rutas } from '../../../data/rutas';
+import imgSilueta from '../../../assets/sira/entre-lineas-silueta.png';
+import imgEstampado from '../../../assets/sira/entre-lineas-estampado.png';
+---
+<section class="coleccion" aria-labelledby="coleccion-titulo">
+  <div class="contenedor rejilla">
+    <div class="foto-grande">
+      <Image
+        src={imgSilueta}
+        alt="Entre Líneas: silueta de la colección SIRA"
+        format="webp"
+        widths={[420, 624, 900, 1248]}
+        sizes="(max-width: 860px) calc(100vw - 40px), 44vw"
+        loading="lazy"
+      />
+    </div>
+    <div class="textos">
+      <p class="etiqueta">Colección actual</p>
+      <h2 id="coleccion-titulo" class="titulo serif">Entre Líneas</h2>
+      <p class="poetico serif">Donde la geometría<br />encuentra lo orgánico.</p>
+      <p class="parrafo">
+        Una conversación serena entre líneas arquitectónicas y textiles que respiran. Piezas de edición corta
+        creadas para trascender temporadas.
+      </p>
+      <a class="enlace-flecha" href={rutas.coleccion('entre-lineas')}>Descubrir la colección<span aria-hidden="true">↗</span></a>
+      <div class="foto-detalle">
+        <Image
+          src={imgEstampado}
+          alt="Entre Líneas: detalle de estampado"
+          format="webp"
+          widths={[350, 700]}
+          sizes="(max-width: 860px) 64vw, 350px"
+          loading="lazy"
+        />
+      </div>
+    </div>
+    <p class="pie-editorial">Líneas que dialogan. Textiles que cuentan.</p>
+    <p class="indice">01 / 03</p>
+  </div>
+</section>
+
+<style>
+  .coleccion {
+    padding: 48px 0 86px;
+  }
+  .rejilla {
+    display: grid;
+    grid-template-columns: minmax(0, 624fr) minmax(0, 544fr);
+    column-gap: clamp(40px, 7.8vw, 112px);
+  }
+  .foto-grande {
+    aspect-ratio: 624 / 780;
+    overflow: hidden;
+    background: var(--arena);
+  }
+  .foto-grande :global(img),
+  .foto-detalle :global(img) {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .textos {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    padding-top: 30px;
+  }
+  .titulo {
+    margin: 38px 0 0 -4px;
+    font-size: clamp(44px, 4.72vw, 68px);
+    line-height: 1.08;
+    color: var(--tinta);
+  }
+  .poetico {
+    margin: 27px 0 0;
+    font-size: clamp(22px, 2.01vw, 29px);
+    font-style: italic;
+    line-height: 1.08;
+  }
+  .parrafo {
+    max-width: 414px;
+    margin: 38px 0 0;
+    font-size: 14px;
+    line-height: 23.8px;
+  }
+  .enlace-flecha {
+    margin-top: 63px;
+  }
+  .foto-detalle {
+    width: calc(350 / 544 * 100%);
+    aspect-ratio: 350 / 258;
+    margin: auto 0 -14px auto;
+    overflow: hidden;
+    background: var(--arena);
+  }
+  .pie-editorial {
+    margin: 22px 0 0;
+    font-size: 11px;
+    line-height: 18.7px;
+  }
+  .indice {
+    margin: 39px 0 0;
+    justify-self: end;
+    font-size: 10px;
+    line-height: 17px;
+  }
+
+  @media (max-width: 860px) {
+    .coleccion {
+      padding: 48px 0 56px;
+    }
+    .rejilla {
+      grid-template-columns: 1fr;
+    }
+    .textos {
+      padding-top: 32px;
+    }
+    .titulo {
+      margin-top: 20px;
+    }
+    .parrafo,
+    .enlace-flecha {
+      margin-top: 28px;
+    }
+    .foto-detalle {
+      margin: 40px 0 0 auto;
+      width: 72%;
+    }
+    .pie-editorial {
+      /* En celular el pie va justo debajo de la foto grande. */
+      grid-row: 2;
+    }
+    .indice {
+      margin-top: 16px;
+    }
+  }
+</style>

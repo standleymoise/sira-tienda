@@ -1,20 +1,26 @@
 ---
-// Página propia de cada producto: /producto/<slug>/ (el mismo slug que en WooCommerce).
-// Es la que Google indexa y la que se comparte: título, descripción, foto, precio y datos
-// estructurados (Product + Offer + BreadcrumbList) quedan en el HTML desde la compilación.
-// Precio y stock se vuelven a leer en vivo al abrirla; el botón usa el mismo carrito que la tienda.
+// Ficha de producto SIRA: /producto/<slug>/ (el mismo slug que en WooCommerce).
+// Figma «Product Details» (147:5594), fondo blanco: galería (foto principal 558×509 + miniaturas
+// de 87 px), nombre, precio, descripción, selector de variación, «Agregar al carrito» dorado,
+// «Detalles del producto» y «También te puede gustar» con tarjetas reales.
+// Es la página que Google indexa: título, descripción, foto, precio y datos estructurados
+// (Product + Offer + BreadcrumbList) quedan en el HTML desde la compilación; precio y stock se
+// vuelven a leer en vivo al abrirla (también los de cada variación).
+// Del Figma se omitió lo que no es real: «3 usuarios lo tienen en el carrito», la franja de
+// puntos de lealtad y el ícono de tarjeta.
 import { Image } from 'astro:assets';
-import Base from '../../layouts/Base.astro';
-import Logo from '../../components/Logo.astro';
+import PaginaSira from '../../layouts/PaginaSira.astro';
+import TarjetaProducto from '../../components/sira/TarjetaProducto.astro';
 import { getProductos, storeApiUrl, type Producto } from '../../data/tienda';
 import { rutas } from '../../data/rutas';
 import { tienda } from '../../../tienda.config';
 
 export async function getStaticPaths() {
-  return (await getProductos()).map((p) => ({ params: { slug: p.slug }, props: { p } }));
+  const todos = await getProductos();
+  return todos.map((p) => ({ params: { slug: p.slug }, props: { p, todos } }));
 }
 
-const { p } = Astro.props as { p: Producto };
+const { p, todos } = Astro.props as { p: Producto; todos: Producto[] };
 const sitio = Astro.site ?? Astro.url;
 const abs = (ruta: string) => new URL(ruta, sitio).href;
 const paginaUrl = abs(rutas.producto(p.slug));
@@ -48,271 +54,620 @@ const jsonLd = [
     '@type': 'BreadcrumbList',
     itemListElement: [
       { '@type': 'ListItem', position: 1, name: 'Inicio', item: abs(rutas.inicio) },
-      { '@type': 'ListItem', position: 2, name: 'Productos', item: abs(rutas.productos) },
+      { '@type': 'ListItem', position: 2, name: 'Tienda', item: abs(rutas.productos) },
       { '@type': 'ListItem', position: 3, name: p.nombre, item: paginaUrl },
     ],
   },
 ];
-const [principal, ...demas] = p.imagenes;
+
+const imagenes = p.imagenes;
+const principal = imagenes[0];
+// Texto junto al precio: el resumen; si no hay, el primer párrafo de la descripción.
+const intro = p.resumen || p.descripcion[0] || '';
+// «Detalles del producto»: la descripción larga (sin repetir el párrafo de arriba) y los atributos.
+const detalles = p.descripcion.filter((d) => d !== intro);
+const variable = p.tipo === 'variable' && p.opciones.length > 0 && p.variaciones.length > 0;
+const bonito = (s: string) => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+const tamFoto = '(max-width: 860px) calc(100vw - 40px), (max-width: 1200px) 46vw, 558px';
+
+// «También te puede gustar»: otros productos con foto, primero los que comparten categoría.
+const comunes = (o: Producto) => o.categoriasSlug.filter((c) => p.categoriasSlug.includes(c)).length;
+const relacionados = todos
+  .filter((o) => o.id !== p.id && o.imagenes.length > 0)
+  .sort((a, b) => comunes(b) - comunes(a))
+  .slice(0, 4);
 ---
-<Base
+<PaginaSira
   title={`${p.nombre} | ${tienda.marca.nombre}`}
   description={descripcion}
   imagen={principal?.src}
   tipo="product"
   jsonLd={jsonLd}
+  activo="tienda"
+  fondo="blanco"
 >
-  <main class="ficha" data-api={storeApiUrl} data-id={p.id}>
-    <header class="cabecera">
-      <a class="volver" href={rutas.inicio}>
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
-        <span>Tienda</span>
-      </a>
-      <Logo alto={36} />
-      <a class="btn-redondo" href={`${rutas.inicio}#carrito`}>
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2l2.4 10.2a1.5 1.5 0 0 0 1.5 1.1h8.6a1.5 1.5 0 0 0 1.4-1.1L21 8H6.2" /><circle cx="9.5" cy="19.5" r="1.4" /><circle cx="17" cy="19.5" r="1.4" /></svg>
-        <span class="sr-only">Ver carrito</span>
-      </a>
-    </header>
-
-    <nav class="migas" aria-label="Ruta">
-      <a href={rutas.inicio}>Inicio</a> › <a href={rutas.productos}>Productos</a> ›{' '}
-      <span aria-current="page">{p.nombre}</span>
-    </nav>
-
+  <div
+    class="ficha"
+    data-ficha
+    data-api={storeApiUrl}
+    data-id={p.id}
+    data-carrito={rutas.carrito}
+    data-originales={JSON.stringify(imagenes.map((i) => i.src))}
+    data-variaciones={variable ? JSON.stringify(p.variaciones) : undefined}
+  >
     <div class="cuerpo">
-      <div class="fotos">
-        {principal && (
-          <Image
-            class="foto-principal"
-            src={principal.src}
-            alt={principal.alt}
-            inferSize
-            format="webp"
-            widths={[480, 720, 1080]}
-            sizes="(max-width: 760px) 92vw, 520px"
-            loading="eager"
-            fetchpriority="high"
-          />
-        )}
-        {demas.length > 0 && (
-          <div class="miniaturas">
-            {demas.map((img) => (
-              <Image src={img.src} alt={img.alt} inferSize format="webp" widths={[240, 480]} sizes="160px" />
+      <div class="galeria">
+        <div class="foto-principal">
+          {principal ? (
+            <Image
+              data-foto-principal
+              src={principal.src}
+              alt={principal.alt}
+              inferSize
+              format="webp"
+              widths={[558, 800, 1116]}
+              sizes={tamFoto}
+              loading="eager"
+              fetchpriority="high"
+            />
+          ) : (
+            <span class="sin-foto serif">{p.nombre}</span>
+          )}
+        </div>
+        {imagenes.length > 1 && (
+          <div class="miniaturas" role="group" aria-label="Fotos del producto">
+            {imagenes.map((img, i) => (
+              <button
+                type="button"
+                class:list={['miniatura', { activa: i === 0 }]}
+                data-miniatura={i}
+                aria-pressed={i === 0 ? 'true' : 'false'}
+                aria-label={`Ver foto ${i + 1} de ${imagenes.length}`}
+              >
+                <Image src={img.src} alt="" inferSize format="webp" widths={[87, 174]} sizes="87px" loading="lazy" />
+              </button>
             ))}
           </div>
+        )}
+        {imagenes.length > 1 && (
+          <template data-fotos>
+            {imagenes.map((img) => (
+              <Image src={img.src} alt={img.alt} inferSize format="webp" widths={[558, 800, 1116]} sizes={tamFoto} />
+            ))}
+          </template>
         )}
       </div>
 
       <div class="datos">
-        <h1>{p.nombre}</h1>
+        <h1 class="nombre serif">{p.nombre}</h1>
         <p class="precio">
-          <span data-precio>{p.precio}</span>
-          {p.precioAntes && <s class="antes">{p.precioAntes}</s>}
+          <span class="precio-etiqueta">Precio:</span>
+          <span class="precio-valor" data-precio>{p.precio}</span>
+          {p.precioAntes && <s class="antes" data-antes>{p.precioAntes}</s>}
         </p>
-        <p class={p.enStock ? 'stock' : 'stock agotado'} data-stock>{p.stockTexto}</p>
-        <p class="destacado" data-destacado hidden={!p.destacado}>{p.destacado}</p>
-        {p.resumen && <p class="resumen">{p.resumen}</p>}
-        <div class="botones">
-          <button class="btn" type="button" data-agregar disabled={!p.enStock}>Agregar al carrito</button>
-          <a class="btn btn-borde" href={`${rutas.inicio}#carrito`}>Ver carrito</a>
-        </div>
-        <p class="aviso" data-aviso role="status" aria-live="polite"></p>
-        {p.descripcion.length > 0 && (
-          <section class="descripcion">
-            <h2>Descripción</h2>
-            {p.descripcion.map((d) => <p>{d}</p>)}
-          </section>
+        <p class:list={['stock', { agotado: !p.enStock }]} data-stock>{p.stockTexto}</p>
+        {intro && <p class="intro">{intro}</p>}
+
+        {variable && (
+          <div class="opciones">
+            {p.opciones.map((o) => (
+              <fieldset class="opcion" data-opcion={o.nombre} data-etiqueta={bonito(o.nombre)}>
+                <legend>
+                  {bonito(o.nombre)}<span class="elegido" data-elegido></span>
+                </legend>
+                <div class="pildoras">
+                  {o.valores.map((v) => (
+                    <label class="pildora" data-valor={v.slug}>
+                      <input type="radio" name={`opcion-${o.nombre}`} value={v.slug} />
+                      <span>{v.nombre}</span>
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+            ))}
+          </div>
         )}
+
+        <button class="agregar" type="button" data-agregar disabled={!p.enStock}>
+          {p.enStock ? 'Agregar al carrito' : 'Agotado'}
+        </button>
+        <p class="aviso" data-aviso role="status" aria-live="polite"></p>
       </div>
     </div>
-  </main>
-</Base>
+
+    {(detalles.length > 0 || intro || p.opciones.length > 0) && (
+      <section class="detalles" aria-labelledby="titulo-detalles">
+        <h2 id="titulo-detalles" class="serif">Detalles del producto</h2>
+        {detalles.length > 0 ? detalles.map((d) => <p>{d}</p>) : intro && <p>{intro}</p>}
+        {(p.opciones.length > 0 || p.reversible || p.sku) && (
+          <dl class="atributos">
+            {p.opciones.map((o) => (
+              <div>
+                <dt>{bonito(o.nombre)}</dt>
+                <dd>{o.valores.map((v) => v.nombre).join(' · ')}</dd>
+              </div>
+            ))}
+            {p.reversible && (
+              <div>
+                <dt>Tipo</dt>
+                <dd>Prenda reversible</dd>
+              </div>
+            )}
+            {p.sku && (
+              <div>
+                <dt>Código</dt>
+                <dd>{p.sku}</dd>
+              </div>
+            )}
+          </dl>
+        )}
+      </section>
+    )}
+
+    {relacionados.length > 0 && (
+      <section class="relacionados" aria-labelledby="titulo-relacionados">
+        <h2 id="titulo-relacionados" class="serif">También te puede gustar</h2>
+        <div class="rejilla">
+          {relacionados.map((r) => <TarjetaProducto producto={r} variante="lista" />)}
+        </div>
+      </section>
+    )}
+  </div>
+</PaginaSira>
 
 <script>
-  import { crearCliente, formato, destacadoDe, type ProductoApi } from '../../scripts/tienda-api';
+  import { crearCliente, formato, type Carrito, type ProductoApi } from '../../scripts/tienda-api';
 
-  const main = document.querySelector<HTMLElement>('.ficha')!;
-  const API = main.dataset.api!;
-  const id = Number(main.dataset.id);
-  const cliente = crearCliente(API);
-  const boton = main.querySelector<HTMLButtonElement>('[data-agregar]')!;
-  const aviso = main.querySelector<HTMLElement>('[data-aviso]')!;
+  type ApiPrecio = ProductoApi & {
+    prices: ProductoApi['prices'] & {
+      regular_price: string;
+      price_range?: { min_amount: string; max_amount: string } | null;
+    };
+  };
+  type Variacion = { id: number; atributos: Record<string, string> };
 
-  // Precio y stock en vivo (el HTML trae los del último build).
-  cliente
-    .api<ProductoApi>(`/products/${id}`)
-    .then((p) => {
-      main.querySelector('[data-precio]')!.textContent = formato(p.prices.price, p.prices);
-      const stock = main.querySelector<HTMLElement>('[data-stock]')!;
-      const hay = p.is_purchasable && p.is_in_stock;
-      stock.textContent = p.stock_availability?.text || (hay ? 'Disponible' : 'Agotado');
+  const ficha = document.querySelector<HTMLElement>('[data-ficha]');
+  if (ficha) iniciar(ficha);
+
+  function iniciar(ficha: HTMLElement) {
+    const API = ficha.dataset.api!;
+    const id = Number(ficha.dataset.id);
+    const cliente = crearCliente(API);
+    const boton = ficha.querySelector<HTMLButtonElement>('[data-agregar]')!;
+    const aviso = ficha.querySelector<HTMLElement>('[data-aviso]')!;
+    const precio = ficha.querySelector<HTMLElement>('[data-precio]')!;
+    const antes = ficha.querySelector<HTMLElement>('[data-antes]');
+    const stock = ficha.querySelector<HTMLElement>('[data-stock]')!;
+    const variaciones: Variacion[] = JSON.parse(ficha.dataset.variaciones || '[]');
+    const originales: string[] = JSON.parse(ficha.dataset.originales || '[]');
+    const variable = variaciones.length > 0;
+    const opciones = [...ficha.querySelectorAll<HTMLFieldSetElement>('[data-opcion]')];
+
+    // ---------- galería: la miniatura cambia la foto principal ----------
+    const foto = ficha.querySelector<HTMLImageElement>('[data-foto-principal]');
+    const fotos = [...(ficha.querySelector<HTMLTemplateElement>('[data-fotos]')?.content.querySelectorAll('img') ?? [])];
+    const miniaturas = [...ficha.querySelectorAll<HTMLButtonElement>('[data-miniatura]')];
+    function verFoto(i: number) {
+      const f = fotos[i];
+      if (!foto || !f) return;
+      foto.srcset = f.srcset;
+      foto.src = f.src;
+      foto.alt = f.alt;
+      miniaturas.forEach((m, j) => {
+        m.classList.toggle('activa', j === i);
+        m.setAttribute('aria-pressed', String(j === i));
+      });
+    }
+    miniaturas.forEach((m, i) => m.addEventListener('click', () => verFoto(i)));
+
+    // ---------- precio y stock en vivo ----------
+    let hayStock = !boton.disabled;
+    function pintar(p: ApiPrecio, conRango: boolean) {
+      const pr = p.prices;
+      const r = pr.price_range;
+      const rango = conRango && !!r && r.min_amount !== r.max_amount;
+      precio.textContent = rango ? `${formato(r!.min_amount, pr)} – ${formato(r!.max_amount, pr)}` : formato(pr.price, pr);
+      if (antes) {
+        antes.hidden = rango || !(Number(pr.regular_price) > Number(pr.price));
+        if (!antes.hidden) antes.textContent = formato(pr.regular_price, pr);
+      }
+      ponerStock(p.is_purchasable && p.is_in_stock, p.stock_availability?.text);
+    }
+    function ponerStock(hay: boolean, texto?: string) {
+      hayStock = hay;
+      stock.textContent = texto || (hay ? 'Disponible' : 'Agotado');
       stock.classList.toggle('agotado', !hay);
       boton.disabled = !hay;
-      const dest = main.querySelector<HTMLElement>('[data-destacado]')!;
-      dest.textContent = destacadoDe(p);
-      dest.hidden = !dest.textContent;
-    })
-    .catch(() => {});
-
-  boton.addEventListener('click', async () => {
-    boton.disabled = true;
-    aviso.textContent = 'Agregando…';
-    try {
-      const c = await cliente.agregar(id);
-      aviso.textContent = `Listo: ${c.items_count} ${c.items_count === 1 ? 'producto' : 'productos'} en su carrito.`;
-    } catch (e) {
-      aviso.textContent = `No se pudo agregar: ${(e as Error).message}`;
-    } finally {
-      boton.disabled = false;
+      boton.textContent = hay ? 'Agregar al carrito' : 'Agotado';
     }
-  });
+    let base: ApiPrecio | null = null;
+    cliente
+      .api<ApiPrecio>(`/products/${id}`)
+      .then((p) => {
+        base = p;
+        if (!elegida()) pintar(p, true);
+      })
+      .catch(() => {});
+
+    // ---------- variaciones ----------
+    // Se leen todas en vivo (son pocas) para tachar las opciones agotadas.
+    const vivas = new Map<number, ApiPrecio>();
+    const cargaVariaciones = variable
+      ? Promise.all(
+          variaciones.map((v) =>
+            cliente
+              .api<ApiPrecio>(`/products/${v.id}`)
+              .then((d) => void vivas.set(v.id, d))
+              .catch(() => {}),
+          ),
+        ).then(marcarAgotadas)
+      : Promise.resolve();
+
+    const seleccion = () =>
+      Object.fromEntries(
+        opciones.map((f) => [f.dataset.opcion!, f.querySelector<HTMLInputElement>('input:checked')?.value ?? '']),
+      ) as Record<string, string>;
+    // Un valor vacío en la variación significa «cualquiera» (así lo guarda WooCommerce).
+    const coincide = (v: Variacion, sel: Record<string, string>) =>
+      Object.entries(sel).every(([k, val]) => !v.atributos[k] || v.atributos[k] === val);
+    function elegida() {
+      if (!variable) return null;
+      const sel = seleccion();
+      if (Object.values(sel).some((v) => !v)) return null;
+      return variaciones.find((v) => coincide(v, sel)) ?? null;
+    }
+
+    function marcarAgotadas() {
+      for (const f of opciones) {
+        const nombre = f.dataset.opcion!;
+        for (const l of f.querySelectorAll<HTMLElement>('[data-valor]')) {
+          const posibles = variaciones.filter((v) => !v.atributos[nombre] || v.atributos[nombre] === l.dataset.valor);
+          const agotada =
+            posibles.length === 0 ||
+            posibles.every((v) => {
+              const d = vivas.get(v.id);
+              return d ? !(d.is_purchasable && d.is_in_stock) : false;
+            });
+          l.classList.toggle('agotada', agotada);
+          const texto = l.querySelector('span')!.textContent ?? '';
+          l.querySelector('input')!.setAttribute('aria-label', agotada ? `${texto} (agotado)` : texto);
+          l.title = agotada ? 'Agotado' : '';
+        }
+      }
+    }
+
+    async function alCambiar() {
+      for (const f of opciones) {
+        const marcado = f.querySelector<HTMLInputElement>('input:checked');
+        f.querySelector<HTMLElement>('[data-elegido]')!.textContent = marcado
+          ? `: ${marcado.nextElementSibling?.textContent ?? ''}`
+          : '';
+      }
+      aviso.textContent = '';
+      const v = elegida();
+      if (!v) {
+        if (Object.values(seleccion()).every(Boolean)) ponerStock(false, 'Esta combinación no está disponible');
+        else if (base) pintar(base, true);
+        return;
+      }
+      await cargaVariaciones;
+      const d = vivas.get(v.id) ?? (await cliente.api<ApiPrecio>(`/products/${v.id}`).catch(() => null));
+      if (!d || elegida()?.id !== v.id) return; // sin datos, o cambió mientras se leía
+      vivas.set(v.id, d);
+      pintar(d, false);
+      // Si la foto de la variación está en la galería, se muestra.
+      const i = originales.indexOf(d.images?.[0]?.src ?? '');
+      if (i >= 0) verFoto(i);
+    }
+    opciones.forEach((f) => f.addEventListener('change', alCambiar));
+
+    // ---------- agregar al carrito ----------
+    boton.addEventListener('click', async () => {
+      let idAgregar = id;
+      if (variable) {
+        const v = elegida();
+        if (!v) {
+          const falta = opciones.find((f) => !f.querySelector('input:checked'));
+          aviso.textContent = falta
+            ? `Elija ${falta.dataset.etiqueta!.toLowerCase()} antes de agregar.`
+            : 'Esta combinación no está disponible.';
+          falta?.querySelector<HTMLInputElement>('input')?.focus();
+          return;
+        }
+        idAgregar = v.id;
+      }
+      boton.disabled = true;
+      aviso.textContent = 'Agregando…';
+      try {
+        const c = await cliente.api<Carrito>('/cart/add-item', { id: idAgregar, quantity: 1 });
+        dispatchEvent(new CustomEvent('sira:carrito', { detail: c.items_count }));
+        const enlace = document.createElement('a');
+        enlace.href = ficha.dataset.carrito!;
+        enlace.textContent = 'Ver carrito →';
+        aviso.replaceChildren('Agregado al carrito. ', enlace);
+      } catch (e) {
+        aviso.textContent = `No se pudo agregar: ${(e as Error).message}`;
+      } finally {
+        boton.disabled = !hayStock;
+      }
+    });
+  }
 </script>
 
 <style>
   .ficha {
-    max-width: 1080px;
-    margin: 0 auto;
-    padding: 12px 16px 48px;
+    width: min(100% - 2 * var(--margen), var(--ancho));
+    margin-inline: auto;
+    padding: clamp(28px, 5.6vw, 81px) 0 clamp(48px, 4vw, 57px);
+    color: #181717;
   }
-  .cabecera {
-    display: grid;
-    grid-template-columns: 1fr auto 1fr;
-    align-items: center;
-    min-height: 52px;
-  }
-  .volver {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    color: var(--primario);
-    font-weight: 600;
-    text-decoration: none;
-  }
-  .volver svg,
-  .btn-redondo svg {
-    width: 22px;
-    height: 22px;
-    fill: none;
-    stroke: currentColor;
-    stroke-width: 2;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-  }
-  .btn-redondo {
-    justify-self: end;
-    display: grid;
-    place-items: center;
-    width: 44px;
-    height: 44px;
-    border-radius: 50%;
-    background: #fff;
-    color: var(--secundario);
-    box-shadow: 0 4px 14px rgb(0 0 0 / 0.08);
-  }
-  .migas {
-    margin: 10px 0 18px;
-    font-size: 14px;
-  }
-  .migas a {
-    color: var(--secundario);
-  }
+  /* Figma: galería de 558 px desde x=83; datos desde x=709 (485 de ancho) */
   .cuerpo {
     display: grid;
     gap: 28px;
   }
-  @media (min-width: 760px) {
+  @media (min-width: 860px) {
     .cuerpo {
-      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      grid-template-columns: minmax(0, 558px) minmax(0, 496px);
+      column-gap: clamp(32px, 4.7vw, 68px);
       align-items: start;
     }
   }
-  .fotos :global(img) {
-    width: 100%;
-    height: auto;
-    border-radius: 18px;
-    background: var(--suave-claro);
-  }
   .foto-principal {
-    aspect-ratio: 1;
-    object-fit: contain;
+    aspect-ratio: 558 / 509;
+    border-radius: 9px;
+    overflow: hidden;
+    background: #ebedef;
+    box-shadow: 0 1px 2.7px rgb(0 0 0 / 0.12);
+  }
+  .foto-principal :global(img) {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .sin-foto {
+    display: grid;
+    place-items: center;
+    height: 100%;
+    padding: 24px;
+    font-size: 28px;
+    text-align: center;
+    color: var(--gris);
   }
   .miniaturas {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
-    gap: 10px;
-    margin-top: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: clamp(12px, 2.2vw, 31px);
+    margin-top: 22px;
   }
-  .miniaturas :global(img) {
-    aspect-ratio: 1;
-    object-fit: contain;
+  .miniatura {
+    width: 87px;
+    height: 87px;
+    padding: 0;
+    border: 1px solid #dddddd;
+    border-radius: 4px;
+    background: #fff;
+    overflow: hidden;
+    cursor: pointer;
   }
-  h1 {
-    margin: 0 0 8px;
-    font-family: var(--font-alt);
-    color: var(--primario);
-    line-height: 1.15;
+  .miniatura.activa {
+    border-color: var(--oro-boton);
+    box-shadow: 0 0 0 1px var(--oro-boton);
+  }
+  .miniatura :global(img) {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .nombre {
+    margin: 0;
+    font-size: clamp(30px, 2.8vw, 40px);
+    line-height: 1.25;
+    color: var(--tinta-fuerte);
+  }
+  @media (min-width: 860px) {
+    .nombre {
+      line-height: 1.5;
+    }
   }
   .precio {
     display: flex;
+    flex-wrap: wrap;
     align-items: baseline;
-    gap: 10px;
-    margin: 0;
-    font-size: 26px;
-    font-weight: 700;
-    color: var(--primario);
+    gap: 6px 15px;
+    margin: 20px 0 0;
+  }
+  .precio-etiqueta {
+    font-size: 14.28px;
+    color: #868686;
+  }
+  .precio-valor {
+    font-size: 17.85px;
+    font-weight: 600;
+    color: #333333;
   }
   .antes {
-    font-size: 17px;
-    font-weight: 400;
-    color: var(--texto);
+    font-size: 14.28px;
+    color: #868686;
   }
   .stock {
-    margin: 6px 0 0;
-    color: var(--exito);
-    font-weight: 600;
+    margin: 8px 0 0;
+    font-size: 13px;
+    color: #868686;
   }
   .stock.agotado {
-    color: var(--acento);
+    color: #a33a2b;
+    font-weight: 600;
   }
-  .resumen {
-    line-height: 1.6;
+  .intro {
+    margin: 22px 0 0;
+    font-size: clamp(16px, 1.24vw, 17.85px);
+    line-height: 1.84;
   }
-  .botones {
+
+  .opciones {
+    display: grid;
+    gap: 18px;
+    margin-top: 26px;
+  }
+  .opcion {
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+  .opcion legend {
+    padding: 0;
+    margin-bottom: 10px;
+    font-size: 14.28px;
+    font-weight: 600;
+    color: #333;
+  }
+  .elegido {
+    font-weight: 400;
+    color: #6a635c;
+  }
+  .pildoras {
     display: flex;
     flex-wrap: wrap;
     gap: 10px;
-    margin: 18px 0 6px;
   }
-  .btn[disabled] {
-    opacity: 0.5;
+  .pildora {
+    position: relative;
+    cursor: pointer;
+  }
+  .pildora input {
+    position: absolute;
+    inset: 0;
+    margin: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+  .pildora span {
+    display: inline-flex;
+    align-items: center;
+    min-height: 40px;
+    padding: 8px 18px;
+    border: 1px solid #dbdbdb;
+    border-radius: 999px;
+    background: #fff;
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    color: #333;
+    transition:
+      border-color 0.2s,
+      background-color 0.2s;
+  }
+  .pildora:hover span {
+    border-color: var(--oro-boton);
+  }
+  .pildora input:checked + span {
+    border-color: var(--oro-boton);
+    background: color-mix(in srgb, var(--oro-boton) 14%, #fff);
+    color: var(--tinta-fuerte);
+    font-weight: 600;
+  }
+  .pildora input:focus-visible + span {
+    outline: 2px solid var(--oro);
+    outline-offset: 2px;
+  }
+  .pildora.agotada span {
+    border-style: dashed;
+    color: #9a9a9a;
+    text-decoration: line-through;
+  }
+
+  .agregar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 199px;
+    height: 48px;
+    margin-top: 32px;
+    padding: 0 24px;
+    border: 0;
+    border-radius: 9px;
+    background: var(--oro-boton);
+    color: #fff;
+    font-family: var(--font-sans);
+    font-size: 15.17px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s;
+  }
+  .agregar:hover:not([disabled]) {
+    background: #b89a3d;
+  }
+  .agregar[disabled] {
+    opacity: 0.55;
     cursor: not-allowed;
   }
   .aviso {
-    min-height: 1.4em;
-    margin: 0;
+    min-height: 1.5em;
+    margin: 12px 0 0;
     font-size: 14px;
+    color: #333;
   }
-  .descripcion {
-    margin-top: 20px;
-    line-height: 1.65;
+  .aviso :global(a) {
+    color: var(--oro);
+    font-weight: 600;
   }
-  .descripcion h2 {
-    font-size: 19px;
-    color: var(--primario);
+
+  .detalles {
+    margin-top: clamp(48px, 6.5vw, 82px);
   }
-  /* Texto destacado del plugin de ejemplo wordpress/mu-plugins/tienda-extras.php */
-  .destacado {
-    display: inline-block;
-    margin: 8px 0 0;
-    padding: 3px 10px;
-    border-radius: 999px;
-    background: color-mix(in srgb, var(--secundario) 16%, transparent);
-    color: var(--primario);
-    font-size: 13px;
-    font-weight: 700;
+  .detalles h2,
+  .relacionados h2 {
+    margin: 0 0 8px;
+    font-size: clamp(26px, 2.1vw, 30px);
+    line-height: 2;
+    color: var(--tinta-fuerte);
   }
-  .destacado[hidden] {
-    display: none;
+  .detalles p {
+    margin: 0 0 12px;
+    font-size: 14.28px;
+    line-height: 1.81;
+    color: #000;
+  }
+  .atributos {
+    display: grid;
+    gap: 6px;
+    margin: 16px 0 0;
+    font-size: 14.28px;
+  }
+  .atributos div {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 12px;
+  }
+  .atributos dt {
+    min-width: 90px;
+    font-weight: 600;
+  }
+  .atributos dd {
+    margin: 0;
+    color: #333;
+  }
+
+  .relacionados {
+    margin-top: clamp(48px, 5vw, 64px);
+  }
+  .rejilla {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 32px 14px;
+    margin-top: 16px;
+  }
+  @media (min-width: 760px) {
+    .rejilla {
+      gap: 48px 32px;
+    }
+  }
+  @media (min-width: 1100px) {
+    .rejilla {
+      grid-template-columns: repeat(3, minmax(0, 400px));
+    }
   }
 </style>
