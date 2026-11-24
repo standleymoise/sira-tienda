@@ -1,0 +1,58 @@
+name: Vista previa en GitHub Pages
+
+# Publica una vista previa en https://standleymoise.github.io/sira-tienda/ (sin indexar en Google).
+# Solo corre con la variable del repo DESTINO=pages. Cuando la tienda tenga dominio propio, cambiar
+# DESTINO y usar deploy-hostinger.yml.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    - cron: '0 10 * * *' # precios y stock del HTML al día (4:00 en Costa Rica)
+  repository_dispatch:
+    types: [tienda-actualizada]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  compilar:
+    if: vars.DESTINO == 'pages'
+    runs-on: ubuntu-latest
+    env:
+      SITE_URL: https://standleymoise.github.io
+      BASE_PATH: /sira-tienda/
+      PUBLIC_TIENDA_URL: ${{ vars.PUBLIC_TIENDA_URL }}
+      PUBLIC_FORMULARIO_CONTACTO: ${{ vars.PUBLIC_FORMULARIO_CONTACTO }}
+      PUBLIC_VISTA_PREVIA: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Compilar
+        run: |
+          if [ -z "$PUBLIC_TIENDA_URL" ]; then echo "::error::Falta la variable PUBLIC_TIENDA_URL"; exit 1; fi
+          npm ci
+          npm run build
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  publicar:
+    needs: compilar
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

@@ -20,6 +20,8 @@ interface Props {
 }
 const { title, description = tienda.marca.descripcion, noindex = false, imagen, tipo = 'website', jsonLd } = Astro.props;
 const c = tienda.colores;
+// Vista previa (GitHub Pages): ninguna página se indexa. Se activa con PUBLIC_VISTA_PREVIA=1.
+const vistaPrevia = import.meta.env.PUBLIC_VISTA_PREVIA === '1';
 
 const variables = [
   `--primario:${c.primario}`,
@@ -58,7 +60,7 @@ const ld = jsonLd ? JSON.stringify(jsonLd).replaceAll('<', '\\u003c') : '';
     <link rel="icon" type="image/svg+xml" href={url('/favicon.svg')} />
     <title>{title}</title>
     <meta name="description" content={description} />
-    {noindex && <meta name="robots" content="noindex" />}
+    {(noindex || vistaPrevia) && <meta name="robots" content="noindex" />}
     <meta property="og:type" content={tipo} />
     <meta property="og:site_name" content={tienda.marca.nombre} />
     <meta property="og:locale" content={tienda.pais.locale.replace('-', '_')} />

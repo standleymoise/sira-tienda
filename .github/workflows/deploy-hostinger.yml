@@ -30,7 +30,7 @@ concurrency:
 jobs:
   publicar:
     # Con la variable DESTINO=dokploy la tienda se publica en Dokploy (deploy-dokploy.yml), no aquí.
-    if: vars.DESTINO != 'dokploy'
+    if: vars.DESTINO != 'dokploy' && vars.DESTINO != 'pages'
     runs-on: ubuntu-latest
     env:
       SITE_URL: ${{ vars.SITE_URL }}
