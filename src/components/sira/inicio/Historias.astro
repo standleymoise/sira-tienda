@@ -2,46 +2,83 @@
 // Historias para llevar (Figma: 147:5179, 1440×830): tres tarjetas editoriales.
 // No hay página de historias en el diseño: el enlace y las tarjetas llevan a «Nosotros».
 import { Image } from 'astro:assets';
-import { rutas } from '../../../data/rutas';
+import type { Idioma } from '../../../i18n/idiomas';
+import { rutasPara } from '../../../data/rutas';
 import imgDetras from '../../../assets/sira/detras-de-cada-pieza.png';
 import imgEntreLineas from '../../../assets/sira/entre-lineas-estampado.png';
 import imgCrModa from '../../../assets/sira/crmoda-fucsia.png';
 
-const historias = [
-  {
-    imagen: imgDetras,
-    alt: 'Detrás de cada pieza: fotografía del atelier SIRA',
-    categoria: 'Atelier · San José',
-    titulo: 'Detrás de cada pieza',
-    resumen: 'Detrás de cada pieza hay pruebas, textiles recuperados y decisiones tomadas con intención.',
-    href: rutas.nosotros,
+const { lang = 'es' } = Astro.props as { lang?: Idioma };
+const rutas = rutasPara(lang);
+const t = {
+  es: {
+    etiqueta: 'El universo SIRA',
+    titulo: 'Historias para llevar',
+    ver: 'Ver historias',
+    historias: [
+      {
+        alt: 'Detrás de cada pieza: fotografía del atelier SIRA',
+        categoria: 'Atelier · San José',
+        titulo: 'Detrás de cada pieza',
+        resumen: 'Detrás de cada pieza hay pruebas, textiles recuperados y decisiones tomadas con intención.',
+      },
+      {
+        alt: 'Entre Líneas: vestido de la colección actual',
+        categoria: 'Colección actual',
+        titulo: 'Entre Líneas',
+        resumen: 'La colección que cruza líneas rectas con formas que respiran.',
+      },
+      {
+        alt: 'CRModa: vestido SIRA en la pasarela',
+        categoria: 'Pasarela · Costa Rica',
+        titulo: 'CRModa',
+        resumen: 'Piezas SIRA en la pasarela: color, volumen y textiles que se mueven con quien los lleva.',
+      },
+    ],
   },
-  {
-    imagen: imgEntreLineas,
-    alt: 'Entre Líneas: vestido de la colección actual',
-    categoria: 'Colección actual',
-    titulo: 'Entre Líneas',
-    resumen: 'La colección que cruza líneas rectas con formas que respiran.',
-    href: rutas.coleccion('entre-lineas'),
+  en: {
+    etiqueta: 'The SIRA universe',
+    titulo: 'Stories to wear',
+    ver: 'View stories',
+    historias: [
+      {
+        alt: 'Behind every piece: a photograph of the SIRA atelier',
+        categoria: 'Atelier · San José',
+        titulo: 'Behind every piece',
+        resumen: 'Behind every piece are fittings, reclaimed textiles and decisions made with intention.',
+      },
+      {
+        alt: 'Entre Líneas: a dress from the current collection',
+        categoria: 'Current collection',
+        titulo: 'Entre Líneas',
+        resumen: 'The collection where straight lines meet forms that breathe.',
+      },
+      {
+        alt: 'CRModa: a SIRA dress on the runway',
+        categoria: 'Runway · Costa Rica',
+        titulo: 'CRModa',
+        resumen: 'SIRA on the runway: color, volume and textiles that move with the person wearing them.',
+      },
+    ],
   },
-  {
-    imagen: imgCrModa,
-    alt: 'CRModa: vestido SIRA en la pasarela',
-    categoria: 'Pasarela · Costa Rica',
-    titulo: 'CRModa',
-    resumen: 'Piezas SIRA en la pasarela: color, volumen y textiles que se mueven con quien los lleva.',
-    href: rutas.nosotros,
-  },
+}[lang];
+
+// Las imágenes y los enlaces son los mismos en los dos idiomas.
+const destinos = [
+  { imagen: imgDetras, href: rutas.nosotros },
+  { imagen: imgEntreLineas, href: rutas.coleccion('entre-lineas') },
+  { imagen: imgCrModa, href: rutas.nosotros },
 ];
+const historias = destinos.map((d, i) => ({ ...d, ...t.historias[i] }));
 ---
 <section id="historias" class="historias" aria-labelledby="historias-titulo">
   <div class="contenedor">
     <div class="cabeza">
       <div>
-        <p class="etiqueta">El universo SIRA</p>
-        <h2 id="historias-titulo" class="titulo serif">Historias para llevar</h2>
+        <p class="etiqueta">{t.etiqueta}</p>
+        <h2 id="historias-titulo" class="titulo serif">{t.titulo}</h2>
       </div>
-      <a class="ver" href={rutas.nosotros}>Ver historias<span aria-hidden="true">↗</span></a>
+      <a class="ver" href={rutas.nosotros}>{t.ver}<span aria-hidden="true">↗</span></a>
     </div>
     <div class="tarjetas">
       {historias.map((h) => (

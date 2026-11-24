@@ -8,8 +8,9 @@
 import TarjetaProducto from '../TarjetaProducto.astro';
 import EstadoVacio from './EstadoVacio.astro';
 import type { Producto } from '../../../data/tienda';
-import { tiposDePrenda, colecciones } from '../../../data/sira';
-import { rutas, url } from '../../../data/rutas';
+import { tiposDePrendaPara, coleccionesPara } from '../../../data/sira';
+import { rutasPara, url } from '../../../data/rutas';
+import type { Idioma } from '../../../i18n/idiomas';
 
 interface Props {
   etiqueta: string;
@@ -27,6 +28,7 @@ interface Props {
    * lleva a la página de la otra colección (o a la tienda con «Todas las colecciones»).
    */
   coleccionActual?: string;
+  lang?: Idioma;
 }
 const {
   etiqueta,
@@ -37,7 +39,59 @@ const {
   porPagina = 0,
   busqueda = false,
   coleccionActual,
+  lang = 'es',
 } = Astro.props;
+
+const rutas = rutasPara(lang);
+const tiposDePrenda = tiposDePrendaPara(lang);
+const colecciones = coleccionesPara(lang);
+const t = {
+  es: {
+    filtrar: 'Filtrar piezas',
+    tipo: 'Tipo de prenda',
+    verTodo: 'Ver todo',
+    porColeccion: 'Filtrar por colección',
+    todasColecciones: 'TODAS LAS COLECCIONES',
+    soloReversibles: 'Solo reversibles',
+    resultados: 'Resultados para',
+    limpiar: 'Limpiar búsqueda ×',
+    sinFiltros: 'No encontramos piezas con estos filtros.',
+    verTodas: 'Ver todas las piezas →',
+    paginas: 'Páginas',
+    preparando: 'Estamos preparando nuevas piezas. Mientras tanto, puede recorrer el resto del universo SIRA.',
+    verTienda: 'Ver toda la tienda →',
+  },
+  en: {
+    filtrar: 'Filter pieces',
+    tipo: 'Garment type',
+    verTodo: 'View all',
+    porColeccion: 'Filter by collection',
+    todasColecciones: 'ALL COLLECTIONS',
+    soloReversibles: 'Reversible only',
+    resultados: 'Results for',
+    limpiar: 'Clear search ×',
+    sinFiltros: 'No pieces match these filters.',
+    verTodas: 'View all pieces →',
+    paginas: 'Pages',
+    preparando: 'New pieces are in the works. In the meantime, explore the rest of the SIRA universe.',
+    verTienda: 'Visit the shop →',
+  },
+}[lang];
+/** Textos del script del navegador ({q} y {n} se reemplazan allí). */
+const tScript = {
+  es: {
+    pagina: 'Página {n}',
+    sinBusqueda: 'No encontramos piezas para «{q}».',
+    sinColeccion: 'Pronto nuevas piezas en esta colección.',
+    sinFiltros: t.sinFiltros,
+  },
+  en: {
+    pagina: 'Page {n}',
+    sinBusqueda: 'No pieces found for “{q}”.',
+    sinColeccion: 'New pieces are coming to this collection soon.',
+    sinFiltros: t.sinFiltros,
+  },
+}[lang];
 
 const datosTipos = JSON.stringify(Object.fromEntries(tiposDePrenda.map((t) => [t.id, t.categorias])));
 const datosColecciones = JSON.stringify(Object.fromEntries(colecciones.map((c) => [c.slug, c.categoria])));
@@ -51,6 +105,7 @@ const hayProductos = productos.length > 0;
   data-por-pagina={porPagina}
   data-busqueda={busqueda ? '1' : '0'}
   data-coleccion-fija={coleccionActual ?? ''}
+  data-textos={JSON.stringify(tScript)}
   aria-labelledby="listado-titulo"
 >
   <header class="cabecera">
@@ -61,18 +116,18 @@ const hayProductos = productos.length > 0;
 
   {hayProductos ? (
     <>
-      <div class="filtros" role="region" aria-label="Filtrar piezas">
-        <div class="tipos" role="group" aria-label="Tipo de prenda">
-          <button type="button" class="tipo activo" data-tipo="" aria-pressed="true">Ver todo</button>
+      <div class="filtros" role="region" aria-label={t.filtrar}>
+        <div class="tipos" role="group" aria-label={t.tipo}>
+          <button type="button" class="tipo activo" data-tipo="" aria-pressed="true">{t.verTodo}</button>
           {tiposDePrenda.map((t) => (
             <button type="button" class="tipo" data-tipo={t.id} aria-pressed="false">{t.texto}</button>
           ))}
         </div>
         <div class="controles">
           <label class="desplegable" style={`--flecha: url(${url('/img/icono-flecha-abajo.svg')})`}>
-            <span class="sr-only">Filtrar por colección</span>
+            <span class="sr-only">{t.porColeccion}</span>
             <select data-coleccion>
-              <option value="" data-href={rutas.productos}>TODAS LAS COLECCIONES</option>
+              <option value="" data-href={rutas.productos}>{t.todasColecciones}</option>
               {colecciones.map((c) => (
                 <option value={c.slug} data-href={rutas.coleccion(c.slug)} selected={c.slug === coleccionActual}>
                   {c.nombre}
@@ -82,7 +137,7 @@ const hayProductos = productos.length > 0;
           </label>
           <label class="casilla">
             <input type="checkbox" data-reversibles />
-            <span>Solo reversibles</span>
+            <span>{t.soloReversibles}</span>
           </label>
         </div>
       </div>
@@ -90,36 +145,37 @@ const hayProductos = productos.length > 0;
       {busqueda && (
         <div class="resultado" data-resultado hidden>
           <p class="resultado-texto serif" aria-live="polite">
-            Resultados para “<span data-resultado-q></span>”
+            {t.resultados} “<span data-resultado-q></span>”
           </p>
-          <button type="button" class="limpiar" data-limpiar-busqueda>Limpiar búsqueda ×</button>
+          <button type="button" class="limpiar" data-limpiar-busqueda>{t.limpiar}</button>
         </div>
       )}
 
       <ul class="cuadricula" data-cuadricula>
         {productos.map((p, i) => (
           <li data-item>
-            <TarjetaProducto producto={p} variante="lista" prioridad={i < 3} />
+            <TarjetaProducto producto={p} variante="lista" prioridad={i < 3} lang={lang} />
           </li>
         ))}
       </ul>
 
       <div data-vacio-filtros hidden>
-        <EstadoVacio titulo="No encontramos piezas con estos filtros.">
+        <EstadoVacio titulo={t.sinFiltros} lang={lang}>
           <p class="vacio-acciones">
-            <button type="button" class="enlace-linea boton-limpio" data-ver-todo>Ver todas las piezas →</button>
+            <button type="button" class="enlace-linea boton-limpio" data-ver-todo>{t.verTodas}</button>
           </p>
         </EstadoVacio>
       </div>
 
-      {porPagina > 0 && <nav class="paginas" aria-label="Páginas" data-paginas hidden></nav>}
+      {porPagina > 0 && <nav class="paginas" aria-label={t.paginas} data-paginas hidden></nav>}
     </>
   ) : (
     <div class="sin-piezas">
       <slot name="vacio">
         <EstadoVacio
-          texto="Estamos preparando nuevas piezas. Mientras tanto, puede recorrer el resto del universo SIRA."
-          enlaces={[{ texto: 'Ver toda la tienda →', href: rutas.productos }]}
+          texto={t.preparando}
+          enlaces={[{ texto: t.verTienda, href: rutas.productos }]}
+          lang={lang}
         />
       </slot>
     </div>
@@ -144,6 +200,7 @@ const hayProductos = productos.length > 0;
     const porPagina = Number(raiz.dataset.porPagina || 0);
     const conBusqueda = raiz.dataset.busqueda === '1';
     const coleccionFija = raiz.dataset.coleccionFija || '';
+    const textos = JSON.parse(raiz.dataset.textos || '{}') as Record<'pagina' | 'sinBusqueda' | 'sinColeccion' | 'sinFiltros', string>;
 
     const items = [...cuadricula.querySelectorAll<HTMLElement>('[data-item]')].map((li) => {
       const t = li.querySelector<HTMLElement>('[data-tarjeta]')!;
@@ -203,7 +260,7 @@ const hayProductos = productos.length > 0;
         b.type = 'button';
         b.textContent = String(n);
         b.className = 'pagina' + (n === estado.pagina ? ' activa' : '');
-        b.setAttribute('aria-label', `Página ${n}`);
+        b.setAttribute('aria-label', textos.pagina.replace('{n}', String(n)));
         if (n === estado.pagina) b.setAttribute('aria-current', 'page');
         b.addEventListener('click', () => {
           estado.pagina = n;
@@ -240,10 +297,10 @@ const hayProductos = productos.length > 0;
       vacio.hidden = visibles.length > 0;
       if (vacioTitulo && !visibles.length) {
         vacioTitulo.textContent = estado.q
-          ? `No encontramos piezas para «${estado.q}».`
+          ? textos.sinBusqueda.replace('{q}', estado.q)
           : estado.coleccion && !coleccionFija
-            ? 'Pronto nuevas piezas en esta colección.'
-            : 'No encontramos piezas con estos filtros.';
+            ? textos.sinColeccion
+            : textos.sinFiltros;
       }
       pintarPaginas(total);
       actualizarUrl();

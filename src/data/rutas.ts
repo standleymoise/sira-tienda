@@ -6,20 +6,28 @@ export const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 /** Convierte "/favoritos" en la URL con el prefijo. */
 export const url = (path: string) => (path.startsWith('/') ? `${base}${path}` : path);
 
-export const rutas = {
-  inicio: url('/'),
-  favoritos: url('/favoritos'),
-  cuenta: url('/cuenta'),
-  productos: url('/productos/'),
+/** Rutas de un idioma: «» = español (raíz), «/en» = inglés. */
+export const crearRutas = (pre: '' | '/en' = '') => ({
+  inicio: url(`${pre}/`),
+  favoritos: url(`${pre}/favoritos`),
+  cuenta: url(`${pre}/cuenta`),
+  productos: url(`${pre}/productos/`),
   /** Testimonios de clientes (vienen de WordPress: CPT UI + ACF). */
-  opiniones: url('/opiniones/'),
-  novedades: url('/novedades/'),
-  reversibles: url('/reversibles/'),
-  colecciones: url('/colecciones/'),
-  coleccion: (slug: string) => url(`/colecciones/${slug}/`),
-  nosotros: url('/nosotros/'),
-  contacto: url('/contacto/'),
-  carrito: url('/carrito/'),
+  opiniones: url(`${pre}/opiniones/`),
+  novedades: url(`${pre}/novedades/`),
+  reversibles: url(`${pre}/reversibles/`),
+  colecciones: url(`${pre}/colecciones/`),
+  coleccion: (slug: string) => url(`${pre}/colecciones/${slug}/`),
+  nosotros: url(`${pre}/nosotros/`),
+  contacto: url(`${pre}/contacto/`),
+  carrito: url(`${pre}/carrito/`),
   /** Página propia de cada producto (la que indexa Google). */
-  producto: (slug: string) => url(`/producto/${slug}/`),
-};
+  producto: (slug: string) => url(`${pre}/producto/${slug}/`),
+});
+
+/** Rutas en español (por defecto). */
+export const rutas = crearRutas('');
+/** Rutas en inglés (/en/…). */
+export const rutasEn = crearRutas('/en');
+/** Rutas del idioma indicado. */
+export const rutasPara = (lang: 'es' | 'en') => (lang === 'en' ? rutasEn : rutas);

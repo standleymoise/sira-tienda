@@ -3,6 +3,7 @@
 // Con «imagen» se muestra en dos columnas (foto editorial + texto); sin ella, centrado y sobrio.
 import { Image } from 'astro:assets';
 import type { ImageMetadata } from 'astro';
+import type { Idioma } from '../../../i18n/idiomas';
 
 interface Props {
   /** Etiqueta pequeña arriba del texto (opcional). */
@@ -14,16 +15,22 @@ interface Props {
   imagen?: ImageMetadata;
   imagenAlt?: string;
   enlaces?: { texto: string; href: string }[];
+  lang?: Idioma;
 }
 const {
   etiqueta,
   lema,
-  titulo = 'Pronto nuevas piezas en esta colección.',
+  titulo,
   texto,
   imagen,
   imagenAlt = '',
   enlaces = [],
+  lang = 'es',
 } = Astro.props;
+const t = {
+  es: { titulo: 'Pronto nuevas piezas en esta colección.' },
+  en: { titulo: 'New pieces are coming to this collection soon.' },
+}[lang];
 ---
 <div class:list={['vacio', { 'con-foto': imagen }]}>
   {imagen && (
@@ -34,7 +41,7 @@ const {
   <div class="vacio-texto">
     {etiqueta && <p class="etiqueta-espaciada">{etiqueta}</p>}
     {lema && <p class="vacio-lema serif">{lema}</p>}
-    <p class="vacio-titulo serif">{titulo}</p>
+    <p class="vacio-titulo serif">{titulo ?? t.titulo}</p>
     {texto && <p class="vacio-parrafo">{texto}</p>}
     {enlaces.length > 0 && (
       <p class="vacio-enlaces">

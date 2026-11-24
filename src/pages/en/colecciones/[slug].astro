@@ -1,0 +1,9 @@
+---
+// /en/colecciones/<slug>/: la misma página que /colecciones/<slug>/, en inglés.
+import Pagina, { getStaticPaths as rutasEs } from '../../colecciones/[slug].astro';
+
+export const getStaticPaths = rutasEs;
+
+const { coleccion } = Astro.props;
+---
+<Pagina lang="en" coleccion={coleccion} />

@@ -2,28 +2,81 @@
 // /reversibles/ (Figma: «Reversibles» 147:4679): portada con foto a todo el ancho, «La historia
 // reversible» (#historia) con las dos caras, y las chaquetas reversibles reales de WooCommerce (#piezas)
 // con filtro Todas · Mujer · Hombre (por data-genero; también por ?genero=, lo usa el menú).
+// La misma página sirve /en/reversibles/ con lang="en".
 import { Image } from 'astro:assets';
 import PaginaSira from '../layouts/PaginaSira.astro';
 import TarjetaProducto from '../components/sira/TarjetaProducto.astro';
 import EstadoVacio from '../components/sira/listado/EstadoVacio.astro';
 import { getProductos } from '../data/tienda';
-import { rutas } from '../data/rutas';
+import { rutasPara } from '../data/rutas';
+import type { Idioma } from '../i18n/idiomas';
 import { tienda } from '../../tienda.config';
 import imgPortada from '../assets/sira/chaqueta-vino-dorado.png';
 import imgCaraA from '../assets/sira/chaqueta-hombre-grafito.png';
 import imgCaraB from '../assets/sira/reversible-cara-b.png';
 
+const { lang = 'es' } = Astro.props as { lang?: Idioma };
+const rutas = rutasPara(lang);
+const t = {
+  es: {
+    meta: `Reversibles: dos caras, una misma esencia | ${tienda.marca.nombre}`,
+    historia:
+      'En SIRA la reversibilidad no es un recurso técnico: es una declaración de intención. Cada chaqueta nace de dos textiles cuidadosamente emparejados —nuevos y recuperados— para que ambas caras tengan presencia propia, multiplicando las posibilidades de uso con menos consumo.',
+    portadaAlt: 'Chaqueta reversible SIRA en vino y dorado',
+    portadaEtiqueta: 'Código de marca SIRA',
+    descubrir: 'Descubrir la colección →',
+    historiaEtiqueta: 'La historia reversible',
+    caraAAlt: 'Chaqueta reversible SIRA, cara A en grafito',
+    caraA: 'Cara A · Sobriedad',
+    caraBAlt: 'Chaqueta reversible SIRA, cara B estampada',
+    caraB: 'Cara B · Contraste',
+    disponibles: 'Piezas disponibles',
+    piezasTitulo: 'Chaquetas Reversibles',
+    porGenero: 'Filtrar por género',
+    todas: 'Todas',
+    mujer: 'Mujer',
+    hombre: 'Hombre',
+    vacioGenero: 'Pronto nuevas piezas reversibles en esta selección.',
+    verReversibles: 'Ver todas las reversibles →',
+    vacio: 'Pronto nuevas piezas reversibles.',
+    verTienda: 'Ver toda la tienda →',
+  },
+  en: {
+    meta: `Reversibles: two sides, one essence | ${tienda.marca.nombre}`,
+    historia:
+      'At SIRA, reversibility is not a technical trick: it is a statement of intent. Each jacket begins with two carefully paired textiles, new and reclaimed, so that both sides carry their own presence, multiplying the ways to wear it while consuming less.',
+    portadaAlt: 'SIRA reversible jacket in wine and gold',
+    portadaEtiqueta: 'The SIRA signature',
+    descubrir: 'Discover the collection →',
+    historiaEtiqueta: 'The reversible story',
+    caraAAlt: 'SIRA reversible jacket, side A in graphite',
+    caraA: 'Side A · Restraint',
+    caraBAlt: 'SIRA reversible jacket, printed side B',
+    caraB: 'Side B · Contrast',
+    disponibles: 'Available pieces',
+    piezasTitulo: 'Reversible Jackets',
+    porGenero: 'Filter by gender',
+    todas: 'All',
+    mujer: 'Women',
+    hombre: 'Men',
+    vacioGenero: 'New reversible pieces are coming to this selection soon.',
+    verReversibles: 'View all reversibles →',
+    vacio: 'New reversible pieces are coming soon.',
+    verTienda: 'Visit the shop →',
+  },
+}[lang];
+
 const productos = (await getProductos()).filter((p) => p.reversible);
-const historia =
-  'En SIRA la reversibilidad no es un recurso técnico: es una declaración de intención. Cada chaqueta nace de dos textiles cuidadosamente emparejados —nuevos y recuperados— para que ambas caras tengan presencia propia, multiplicando las posibilidades de uso con menos consumo.';
+const historia = t.historia;
 const generos = [
-  { id: '', texto: 'Todas' },
-  { id: 'mujer', texto: 'Mujer' },
-  { id: 'hombre', texto: 'Hombre' },
+  { id: '', texto: t.todas },
+  { id: 'mujer', texto: t.mujer },
+  { id: 'hombre', texto: t.hombre },
 ];
 ---
 <PaginaSira
-  title={`Reversibles: dos caras, una misma esencia | ${tienda.marca.nombre}`}
+  lang={lang}
+  title={t.meta}
   description={historia}
   activo="reversibles"
   imagen={imgPortada.src}
@@ -32,7 +85,7 @@ const generos = [
     <Image
       class="portada-foto"
       src={imgPortada}
-      alt="Chaqueta reversible SIRA en vino y dorado"
+      alt={t.portadaAlt}
       format="webp"
       widths={[640, 1024, 1440, 2160, 2880]}
       sizes="100vw"
@@ -41,33 +94,33 @@ const generos = [
     />
     <div class="portada-velo" aria-hidden="true"></div>
     <div class="portada-texto">
-      <p class="portada-etiqueta">Código de marca SIRA</p>
+      <p class="portada-etiqueta">{t.portadaEtiqueta}</p>
       <h1 id="reversibles-titulo" class="portada-titulo serif">
         REVERSIBLE BY NATURE.<br />EXPRESSIVE BY DESIGN.
       </h1>
-      <a class="enlace-linea portada-enlace" href="#piezas">Descubrir la colección →</a>
+      <a class="enlace-linea portada-enlace" href="#piezas">{t.descubrir}</a>
     </div>
   </section>
 
   <section class="historia" id="historia" aria-labelledby="historia-titulo">
     <div class="ancho historia-rejilla">
       <div class="historia-texto">
-        <p class="etiqueta-espaciada">La historia reversible</p>
+        <p class="etiqueta-espaciada">{t.historiaEtiqueta}</p>
         <h2 id="historia-titulo" class="historia-titulo serif">ONE PIECE. TWO STORIES.</h2>
         <p class="parrafo">{historia}</p>
       </div>
       <div class="caras">
         <figure>
           <div class="cara-foto">
-            <Image src={imgCaraA} alt="Chaqueta reversible SIRA, cara A en grafito" format="webp" widths={[294, 588]} sizes="(max-width: 560px) 44vw, 294px" />
+            <Image src={imgCaraA} alt={t.caraAAlt} format="webp" widths={[294, 588]} sizes="(max-width: 560px) 44vw, 294px" />
           </div>
-          <figcaption>Cara A · Sobriedad</figcaption>
+          <figcaption>{t.caraA}</figcaption>
         </figure>
         <figure>
           <div class="cara-foto">
-            <Image src={imgCaraB} alt="Chaqueta reversible SIRA, cara B estampada" format="webp" widths={[294, 588]} sizes="(max-width: 560px) 44vw, 294px" />
+            <Image src={imgCaraB} alt={t.caraBAlt} format="webp" widths={[294, 588]} sizes="(max-width: 560px) 44vw, 294px" />
           </div>
-          <figcaption>Cara B · Contraste</figcaption>
+          <figcaption>{t.caraB}</figcaption>
         </figure>
       </div>
     </div>
@@ -76,11 +129,11 @@ const generos = [
   <section class="piezas ancho" id="piezas" aria-labelledby="piezas-titulo" data-reversibles-lista>
     <div class="piezas-cabecera">
       <div>
-        <p class="etiqueta-espaciada">Piezas disponibles</p>
-        <h2 id="piezas-titulo" class="piezas-titulo serif">Chaquetas Reversibles</h2>
+        <p class="etiqueta-espaciada">{t.disponibles}</p>
+        <h2 id="piezas-titulo" class="piezas-titulo serif">{t.piezasTitulo}</h2>
       </div>
       {productos.length > 0 && (
-        <div class="generos" role="group" aria-label="Filtrar por género">
+        <div class="generos" role="group" aria-label={t.porGenero}>
           {generos.map((g) => (
             <button type="button" class:list={['genero', { activo: !g.id }]} data-genero-filtro={g.id} aria-pressed={!g.id ? 'true' : 'false'}>
               {g.texto}
@@ -95,18 +148,19 @@ const generos = [
         <ul class="cuadricula">
           {productos.map((p, i) => (
             <li data-item data-genero={p.genero}>
-              <TarjetaProducto producto={p} variante="lista" prioridad={i < 4} ancho={292} />
+              <TarjetaProducto producto={p} variante="lista" prioridad={i < 4} ancho={292} lang={lang} />
             </li>
           ))}
         </ul>
         <div data-vacio-genero hidden>
-          <EstadoVacio titulo="Pronto nuevas piezas reversibles en esta selección." enlaces={[{ texto: 'Ver todas las reversibles →', href: `${rutas.reversibles}#piezas` }]} />
+          <EstadoVacio titulo={t.vacioGenero} enlaces={[{ texto: t.verReversibles, href: `${rutas.reversibles}#piezas` }]} lang={lang} />
         </div>
       </>
     ) : (
       <EstadoVacio
-        titulo="Pronto nuevas piezas reversibles."
-        enlaces={[{ texto: 'Ver toda la tienda →', href: rutas.productos }]}
+        titulo={t.vacio}
+        enlaces={[{ texto: t.verTienda, href: rutas.productos }]}
+        lang={lang}
       />
     )}
   </section>

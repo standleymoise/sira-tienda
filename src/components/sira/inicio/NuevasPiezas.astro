@@ -4,12 +4,19 @@
 import TarjetaProducto from '../TarjetaProducto.astro';
 import type { Producto } from '../../../data/tienda';
 import { categoriaNovedades } from '../../../data/sira';
-import { rutas } from '../../../data/rutas';
+import type { Idioma } from '../../../i18n/idiomas';
+import { rutasPara } from '../../../data/rutas';
 
 interface Props {
   productos: Producto[];
+  lang?: Idioma;
 }
-const { productos } = Astro.props;
+const { productos, lang = 'es' } = Astro.props;
+const rutas = rutasPara(lang);
+const t = {
+  es: { etiqueta: 'Una selección SIRA', titulo: 'Nuevas piezas', ver: 'Ver tienda', vacio: 'Pronto nuevas piezas.' },
+  en: { etiqueta: 'A SIRA edit', titulo: 'New pieces', ver: 'Visit the shop', vacio: 'New pieces coming soon.' },
+}[lang];
 
 const conFoto = productos.filter((p) => p.imagenes.length > 0);
 const nuevas = conFoto.filter((p) => p.categoriasSlug.includes(categoriaNovedades));
@@ -19,17 +26,17 @@ const piezas = [...nuevas, ...conFoto.filter((p) => !nuevas.includes(p))].slice(
   <div class="contenedor">
     <div class="cabeza">
       <div>
-        <p class="etiqueta">Una selección SIRA</p>
-        <h2 id="nuevas-titulo" class="titulo serif">Nuevas piezas</h2>
+        <p class="etiqueta">{t.etiqueta}</p>
+        <h2 id="nuevas-titulo" class="titulo serif">{t.titulo}</h2>
       </div>
-      <a class="ver" href={rutas.productos}>Ver tienda<span aria-hidden="true">↗</span></a>
+      <a class="ver" href={rutas.productos}>{t.ver}<span aria-hidden="true">↗</span></a>
     </div>
     {piezas.length > 0 ? (
       <div class="tarjetas">
-        {piezas.map((p) => <TarjetaProducto producto={p} variante="inicio" />)}
+        {piezas.map((p) => <TarjetaProducto producto={p} variante="inicio" lang={lang} />)}
       </div>
     ) : (
-      <p class="vacio serif">Pronto nuevas piezas.</p>
+      <p class="vacio serif">{t.vacio}</p>
     )}
   </div>
 </section>

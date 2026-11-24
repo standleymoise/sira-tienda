@@ -12,7 +12,8 @@ import { Image } from 'astro:assets';
 import PaginaSira from '../../layouts/PaginaSira.astro';
 import TarjetaProducto from '../../components/sira/TarjetaProducto.astro';
 import { getProductos, storeApiUrl, type Producto } from '../../data/tienda';
-import { rutas } from '../../data/rutas';
+import { rutasPara } from '../../data/rutas';
+import { locale, type Idioma } from '../../i18n/idiomas';
 import { tienda } from '../../../tienda.config';
 
 export async function getStaticPaths() {
@@ -20,7 +21,80 @@ export async function getStaticPaths() {
   return todos.map((p) => ({ params: { slug: p.slug }, props: { p, todos } }));
 }
 
-const { p, todos } = Astro.props as { p: Producto; todos: Producto[] };
+const { p, todos, lang = 'es' } = Astro.props as { p: Producto; todos: Producto[]; lang?: Idioma };
+const rutas = rutasPara(lang);
+
+// Nombres de atributos de WooCommerce (vienen en español) con equivalente en inglés; los demás
+// quedan igual hasta que exista la traducción de productos.
+const ATRIBUTOS_EN: Record<string, string> = { talla: 'Size', tamano: 'Size', tamaño: 'Size', medida: 'Size', color: 'Color' };
+// Texto de stock de WooCommerce («3 disponibles», «Agotado»…) dicho en inglés.
+const stockEn = (hay: boolean, texto = '') => {
+  const n = texto.match(/\d+/)?.[0];
+  if (n) return `${n} in stock`;
+  if (/reserva/i.test(texto)) return 'Available on backorder';
+  return hay ? 'In stock' : 'Sold out';
+};
+const t = {
+  es: {
+    inicio: 'Inicio',
+    tienda: 'Tienda',
+    fotos: 'Fotos del producto',
+    verFoto: (i: number, n: number) => `Ver foto ${i} de ${n}`,
+    precio: 'Precio:',
+    stock: p.stockTexto,
+    agregar: 'Agregar al carrito',
+    agotado: 'Agotado',
+    detalles: 'Detalles del producto',
+    tipo: 'Tipo',
+    reversible: 'Prenda reversible',
+    codigo: 'Código',
+    relacionados: 'También te puede gustar',
+  },
+  en: {
+    inicio: 'Home',
+    tienda: 'Shop',
+    fotos: 'Product photos',
+    verFoto: (i: number, n: number) => `View photo ${i} of ${n}`,
+    precio: 'Price:',
+    stock: stockEn(p.enStock, p.stockTexto),
+    agregar: 'Add to cart',
+    agotado: 'Sold out',
+    detalles: 'Product details',
+    tipo: 'Type',
+    reversible: 'Reversible garment',
+    codigo: 'SKU',
+    relacionados: 'You may also like',
+  },
+}[lang];
+// Textos del script del navegador ({x} = nombre de la opción que falta elegir).
+const tScript = {
+  es: {
+    lang,
+    disponible: 'Disponible',
+    agotado: 'Agotado',
+    agregar: 'Agregar al carrito',
+    sinCombinacion: 'Esta combinación no está disponible',
+    sufijoAgotado: '(agotado)',
+    elija: 'Elija {x} antes de agregar.',
+    agregando: 'Agregando…',
+    agregado: 'Agregado al carrito. ',
+    verCarrito: 'Ver carrito →',
+    noSePudo: 'No se pudo agregar: ',
+  },
+  en: {
+    lang,
+    disponible: 'In stock',
+    agotado: 'Sold out',
+    agregar: 'Add to cart',
+    sinCombinacion: 'This combination is unavailable',
+    sufijoAgotado: '(sold out)',
+    elija: 'Please select {x} first.',
+    agregando: 'Adding…',
+    agregado: 'Added to cart. ',
+    verCarrito: 'View cart →',
+    noSePudo: 'Could not add to cart: ',
+  },
+}[lang];
 const sitio = Astro.site ?? Astro.url;
 const abs = (ruta: string) => new URL(ruta, sitio).href;
 const paginaUrl = abs(rutas.producto(p.slug));
@@ -32,7 +106,16 @@ const descripcion = textoBase.length > 155 ? `${textoBase.slice(0, 152).replace(
 const jsonLd = [
   {
     '@context': 'https://schema.org',
+    '@type': 'ItemPage',
+    url: paginaUrl,
+    name: `${p.nombre} | ${tienda.marca.nombre}`,
+    inLanguage: locale[lang],
+    mainEntity: { '@id': `${paginaUrl}#producto` },
+  },
+  {
+    '@context': 'https://schema.org',
     '@type': 'Product',
+    '@id': `${paginaUrl}#producto`,
     name: p.nombre,
     description: textoBase,
     sku: p.sku || undefined,
@@ -53,8 +136,8 @@ const jsonLd = [
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
     itemListElement: [
-      { '@type': 'ListItem', position: 1, name: 'Inicio', item: abs(rutas.inicio) },
-      { '@type': 'ListItem', position: 2, name: 'Tienda', item: abs(rutas.productos) },
+      { '@type': 'ListItem', position: 1, name: t.inicio, item: abs(rutas.inicio) },
+      { '@type': 'ListItem', position: 2, name: t.tienda, item: abs(rutas.productos) },
       { '@type': 'ListItem', position: 3, name: p.nombre, item: paginaUrl },
     ],
   },
@@ -67,7 +150,8 @@ const intro = p.resumen || p.descripcion[0] || '';
 // «Detalles del producto»: la descripción larga (sin repetir el párrafo de arriba) y los atributos.
 const detalles = p.descripcion.filter((d) => d !== intro);
 const variable = p.tipo === 'variable' && p.opciones.length > 0 && p.variaciones.length > 0;
-const bonito = (s: string) => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+const bonito = (s: string) =>
+  (lang === 'en' && ATRIBUTOS_EN[s.toLowerCase()]) || s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
 const tamFoto = '(max-width: 860px) calc(100vw - 40px), (max-width: 1200px) 46vw, 558px';
 
 // «También te puede gustar»: otros productos con foto, primero los que comparten categoría.
@@ -78,6 +162,7 @@ const relacionados = todos
   .slice(0, 4);
 ---
 <PaginaSira
+  lang={lang}
   title={`${p.nombre} | ${tienda.marca.nombre}`}
   description={descripcion}
   imagen={principal?.src}
@@ -92,6 +177,7 @@ const relacionados = todos
     data-api={storeApiUrl}
     data-id={p.id}
     data-carrito={rutas.carrito}
+    data-textos={JSON.stringify(tScript)}
     data-originales={JSON.stringify(imagenes.map((i) => i.src))}
     data-variaciones={variable ? JSON.stringify(p.variaciones) : undefined}
   >
@@ -115,14 +201,14 @@ const relacionados = todos
           )}
         </div>
         {imagenes.length > 1 && (
-          <div class="miniaturas" role="group" aria-label="Fotos del producto">
+          <div class="miniaturas" role="group" aria-label={t.fotos}>
             {imagenes.map((img, i) => (
               <button
                 type="button"
                 class:list={['miniatura', { activa: i === 0 }]}
                 data-miniatura={i}
                 aria-pressed={i === 0 ? 'true' : 'false'}
-                aria-label={`Ver foto ${i + 1} de ${imagenes.length}`}
+                aria-label={t.verFoto(i + 1, imagenes.length)}
               >
                 <Image src={img.src} alt="" inferSize format="webp" widths={[87, 174]} sizes="87px" loading="lazy" />
               </button>
@@ -141,11 +227,11 @@ const relacionados = todos
       <div class="datos">
         <h1 class="nombre serif">{p.nombre}</h1>
         <p class="precio">
-          <span class="precio-etiqueta">Precio:</span>
+          <span class="precio-etiqueta">{t.precio}</span>
           <span class="precio-valor" data-precio>{p.precio}</span>
           {p.precioAntes && <s class="antes" data-antes>{p.precioAntes}</s>}
         </p>
-        <p class:list={['stock', { agotado: !p.enStock }]} data-stock>{p.stockTexto}</p>
+        <p class:list={['stock', { agotado: !p.enStock }]} data-stock>{t.stock}</p>
         {intro && <p class="intro">{intro}</p>}
 
         {variable && (
@@ -169,7 +255,7 @@ const relacionados = todos
         )}
 
         <button class="agregar" type="button" data-agregar disabled={!p.enStock}>
-          {p.enStock ? 'Agregar al carrito' : 'Agotado'}
+          {p.enStock ? t.agregar : t.agotado}
         </button>
         <p class="aviso" data-aviso role="status" aria-live="polite"></p>
       </div>
@@ -177,7 +263,7 @@ const relacionados = todos
 
     {(detalles.length > 0 || intro || p.opciones.length > 0) && (
       <section class="detalles" aria-labelledby="titulo-detalles">
-        <h2 id="titulo-detalles" class="serif">Detalles del producto</h2>
+        <h2 id="titulo-detalles" class="serif">{t.detalles}</h2>
         {detalles.length > 0 ? detalles.map((d) => <p>{d}</p>) : intro && <p>{intro}</p>}
         {(p.opciones.length > 0 || p.reversible || p.sku) && (
           <dl class="atributos">
@@ -189,13 +275,13 @@ const relacionados = todos
             ))}
             {p.reversible && (
               <div>
-                <dt>Tipo</dt>
-                <dd>Prenda reversible</dd>
+                <dt>{t.tipo}</dt>
+                <dd>{t.reversible}</dd>
               </div>
             )}
             {p.sku && (
               <div>
-                <dt>Código</dt>
+                <dt>{t.codigo}</dt>
                 <dd>{p.sku}</dd>
               </div>
             )}
@@ -206,9 +292,9 @@ const relacionados = todos
 
     {relacionados.length > 0 && (
       <section class="relacionados" aria-labelledby="titulo-relacionados">
-        <h2 id="titulo-relacionados" class="serif">También te puede gustar</h2>
+        <h2 id="titulo-relacionados" class="serif">{t.relacionados}</h2>
         <div class="rejilla">
-          {relacionados.map((r) => <TarjetaProducto producto={r} variante="lista" />)}
+          {relacionados.map((r) => <TarjetaProducto producto={r} variante="lista" lang={lang} />)}
         </div>
       </section>
     )}
@@ -242,6 +328,15 @@ const relacionados = todos
     const originales: string[] = JSON.parse(ficha.dataset.originales || '[]');
     const variable = variaciones.length > 0;
     const opciones = [...ficha.querySelectorAll<HTMLFieldSetElement>('[data-opcion]')];
+    const T: Record<string, string> = JSON.parse(ficha.dataset.textos || '{}');
+    // El texto de stock de WooCommerce viene en español: en inglés se escribe el propio.
+    const textoStock = (hay: boolean, texto?: string) => {
+      if (T.lang !== 'en') return texto || (hay ? T.disponible : T.agotado);
+      const n = texto?.match(/\d+/)?.[0];
+      if (n) return `${n} in stock`;
+      if (texto && /reserva/i.test(texto)) return 'Available on backorder';
+      return hay ? T.disponible : T.agotado;
+    };
 
     // ---------- galería: la miniatura cambia la foto principal ----------
     const foto = ficha.querySelector<HTMLImageElement>('[data-foto-principal]');
@@ -275,10 +370,10 @@ const relacionados = todos
     }
     function ponerStock(hay: boolean, texto?: string) {
       hayStock = hay;
-      stock.textContent = texto || (hay ? 'Disponible' : 'Agotado');
+      stock.textContent = textoStock(hay, texto);
       stock.classList.toggle('agotado', !hay);
       boton.disabled = !hay;
-      boton.textContent = hay ? 'Agregar al carrito' : 'Agotado';
+      boton.textContent = hay ? T.agregar : T.agotado;
     }
     let base: ApiPrecio | null = null;
     cliente
@@ -330,8 +425,8 @@ const relacionados = todos
             });
           l.classList.toggle('agotada', agotada);
           const texto = l.querySelector('span')!.textContent ?? '';
-          l.querySelector('input')!.setAttribute('aria-label', agotada ? `${texto} (agotado)` : texto);
-          l.title = agotada ? 'Agotado' : '';
+          l.querySelector('input')!.setAttribute('aria-label', agotada ? `${texto} ${T.sufijoAgotado}` : texto);
+          l.title = agotada ? T.agotado : '';
         }
       }
     }
@@ -346,8 +441,10 @@ const relacionados = todos
       aviso.textContent = '';
       const v = elegida();
       if (!v) {
-        if (Object.values(seleccion()).every(Boolean)) ponerStock(false, 'Esta combinación no está disponible');
-        else if (base) pintar(base, true);
+        if (Object.values(seleccion()).every(Boolean)) {
+          ponerStock(false);
+          stock.textContent = T.sinCombinacion;
+        } else if (base) pintar(base, true);
         return;
       }
       await cargaVariaciones;
@@ -369,24 +466,24 @@ const relacionados = todos
         if (!v) {
           const falta = opciones.find((f) => !f.querySelector('input:checked'));
           aviso.textContent = falta
-            ? `Elija ${falta.dataset.etiqueta!.toLowerCase()} antes de agregar.`
-            : 'Esta combinación no está disponible.';
+            ? T.elija.replace('{x}', falta.dataset.etiqueta!.toLowerCase())
+            : `${T.sinCombinacion}.`;
           falta?.querySelector<HTMLInputElement>('input')?.focus();
           return;
         }
         idAgregar = v.id;
       }
       boton.disabled = true;
-      aviso.textContent = 'Agregando…';
+      aviso.textContent = T.agregando;
       try {
         const c = await cliente.api<Carrito>('/cart/add-item', { id: idAgregar, quantity: 1 });
         dispatchEvent(new CustomEvent('sira:carrito', { detail: c.items_count }));
         const enlace = document.createElement('a');
         enlace.href = ficha.dataset.carrito!;
-        enlace.textContent = 'Ver carrito →';
-        aviso.replaceChildren('Agregado al carrito. ', enlace);
+        enlace.textContent = T.verCarrito;
+        aviso.replaceChildren(T.agregado, enlace);
       } catch (e) {
-        aviso.textContent = `No se pudo agregar: ${(e as Error).message}`;
+        aviso.textContent = `${T.noSePudo}${(e as Error).message}`;
       } finally {
         boton.disabled = !hayStock;
       }

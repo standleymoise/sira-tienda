@@ -1,18 +1,41 @@
 ---
 // Lo que muestra la app instalada cuando no hay internet y la página pedida no está guardada.
 // OJO: el service worker (src/pages/sw.js.ts) guarda esta ruta (/sin-conexion/) al instalarse.
+// Recibe `lang` por props: /en/sin-conexion/ reutiliza esta página con lang="en".
 import PaginaSira from '../layouts/PaginaSira.astro';
-import { rutas } from '../data/rutas';
+import type { Idioma } from '../i18n/idiomas';
+import { rutasPara } from '../data/rutas';
+
+const { lang = 'es' } = Astro.props as { lang?: Idioma };
+const rutas = rutasPara(lang);
+const t = {
+  es: {
+    meta: 'Sin conexión | SIRA Conscious Apparel',
+    etiqueta: 'Sin internet',
+    titulo: 'Sin conexión',
+    texto: 'Revise su internet. Las páginas que ya visitó se pueden abrir igual; el carrito y los pagos necesitan conexión.',
+    reintentar: 'Volver a intentar',
+    // Sin descripción propia: Base usa la descripción general del sitio.
+    descripcion: undefined as string | undefined,
+  },
+  en: {
+    meta: 'Offline | SIRA Conscious Apparel',
+    etiqueta: 'No internet',
+    titulo: 'You are offline',
+    texto: 'Please check your connection. Pages you have already visited will still open; the cart and checkout need a connection.',
+    reintentar: 'Try again',
+    // La descripción general del sitio (la de Base) está en español.
+    descripcion: 'SIRA Conscious Apparel: one-of-a-kind pieces and reversible garments, designed with intention in Costa Rica.' as string | undefined,
+  },
+}[lang];
 ---
-<PaginaSira title="Sin conexión | SIRA Conscious Apparel" noindex>
+<PaginaSira lang={lang} title={t.meta} description={t.descripcion} noindex>
   <section class="mensaje" aria-labelledby="titulo-sin-conexion">
-    <p class="etiqueta-espaciada">Sin internet</p>
-    <h1 id="titulo-sin-conexion" class="serif">Sin conexión</h1>
-    <p class="texto">
-      Revise su internet. Las páginas que ya visitó se pueden abrir igual; el carrito y los pagos necesitan conexión.
-    </p>
+    <p class="etiqueta-espaciada">{t.etiqueta}</p>
+    <h1 id="titulo-sin-conexion" class="serif">{t.titulo}</h1>
+    <p class="texto">{t.texto}</p>
     <div class="acciones">
-      <a class="btn" href={rutas.inicio}>Volver a intentar</a>
+      <a class="btn" href={rutas.inicio}>{t.reintentar}</a>
     </div>
   </section>
 </PaginaSira>

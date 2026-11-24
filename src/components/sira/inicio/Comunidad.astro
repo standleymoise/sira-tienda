@@ -2,35 +2,71 @@
 // Comunidad / boletín (Figma: 147:5195, 1440×360, fondo #ebe7dd).
 // Todavía no hay servicio de boletín: el formulario solo revisa el correo y muestra un aviso.
 // No guarda ni envía nada. Cuando exista el servicio (Mailchimp, Brevo, MailPoet…), conectarlo aquí.
-import { pie } from '../../../data/sira';
+import type { Idioma } from '../../../i18n/idiomas';
+import { piePara } from '../../../data/sira';
+
+const { lang = 'es' } = Astro.props as { lang?: Idioma };
+const pie = piePara(lang);
+const t = {
+  es: {
+    etiqueta: 'En el mundo de SIRA',
+    titulo: 'Lo esencial, de cerca.',
+    parrafo: ['Nuevas piezas, colecciones e historias del atelier.', 'Sin ruido, solo lo esencial.'],
+    correo: 'Tu correo electrónico',
+    boton: 'Suscribirme',
+    aviso: 'Al suscribirte, aceptas nuestra política de privacidad.',
+    gracias: 'Gracias. Muy pronto activaremos el boletín; mientras tanto, síganos en',
+  },
+  en: {
+    etiqueta: 'In the world of SIRA',
+    titulo: 'The essentials, up close.',
+    parrafo: ['New pieces, collections and stories from the atelier.', 'No noise, just the essentials.'],
+    correo: 'Your email address',
+    boton: 'Subscribe',
+    aviso: 'By subscribing, you agree to our privacy policy.',
+    gracias: 'Thank you. Our newsletter is launching soon; in the meantime, follow us on',
+  },
+}[lang];
+
+// Mensajes del script del navegador (errores del correo).
+const tScript = {
+  es: {
+    revisar: 'Revise el correo: parece que le falta algo.',
+    vacio: 'Escriba su correo electrónico.',
+  },
+  en: {
+    revisar: 'Please check your email address; something seems to be missing.',
+    vacio: 'Please enter your email address.',
+  },
+}[lang];
 ---
 <section class="comunidad" aria-labelledby="comunidad-titulo">
   <div class="contenedor rejilla">
     <div class="textos">
-      <p class="etiqueta">En el mundo de SIRA</p>
-      <h2 id="comunidad-titulo" class="titulo serif">Lo esencial, de cerca.</h2>
-      <p class="parrafo">Nuevas piezas, colecciones e historias del atelier.<br />Sin ruido, solo lo esencial.</p>
+      <p class="etiqueta">{t.etiqueta}</p>
+      <h2 id="comunidad-titulo" class="titulo serif">{t.titulo}</h2>
+      <p class="parrafo">{t.parrafo[0]}<br />{t.parrafo[1]}</p>
     </div>
-    <div class="formulario">
+    <div class="formulario" data-textos={JSON.stringify(tScript)}>
       <form class="campo" data-boletin novalidate>
-        <label class="sr-only" for="boletin-correo">Tu correo electrónico</label>
+        <label class="sr-only" for="boletin-correo">{t.correo}</label>
         <input
           id="boletin-correo"
           name="correo"
           type="email"
           autocomplete="email"
           inputmode="email"
-          placeholder="Tu correo electrónico"
+          placeholder={t.correo}
           required
           aria-describedby="boletin-aviso"
         />
-        <button type="submit">Suscribirme<span aria-hidden="true">↗</span></button>
+        <button type="submit">{t.boton}<span aria-hidden="true">↗</span></button>
       </form>
       <p id="boletin-aviso" class="aviso" data-aviso aria-live="polite">
-        Al suscribirte, aceptas nuestra política de privacidad.
+        {t.aviso}
       </p>
       <p class="gracias" data-gracias hidden>
-        Gracias. Muy pronto activaremos el boletín; mientras tanto, síganos en{' '}<a href={pie.instagram.href} target="_blank" rel="noopener">Instagram</a>.
+        {t.gracias}{' '}<a href={pie.instagram.href} target="_blank" rel="noopener">Instagram</a>.
       </p>
     </div>
   </div>
@@ -39,7 +75,8 @@ import { pie } from '../../../data/sira';
 <script>
   // Sin servicio de correo todavía: se valida el correo y se muestra el aviso. No se envía nada.
   document.querySelectorAll<HTMLFormElement>('[data-boletin]').forEach((form) => {
-    const caja = form.closest('.formulario')!;
+    const caja = form.closest<HTMLElement>('.formulario')!;
+    const textos = JSON.parse(caja.dataset.textos || '{}') as { revisar: string; vacio: string };
     const input = form.querySelector('input')!;
     const aviso = caja.querySelector<HTMLElement>('[data-aviso]')!;
     const gracias = caja.querySelector<HTMLElement>('[data-gracias]')!;
@@ -52,7 +89,7 @@ import { pie } from '../../../data/sira';
       if (!valido) {
         input.setAttribute('aria-invalid', 'true');
         aviso.classList.add('error');
-        aviso.textContent = correo ? 'Revise el correo: parece que le falta algo.' : 'Escriba su correo electrónico.';
+        aviso.textContent = correo ? textos.revisar : textos.vacio;
         input.focus();
         return;
       }

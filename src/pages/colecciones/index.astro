@@ -1,32 +1,61 @@
 ---
 // /colecciones/ (Figma: «Body» 147:4557, «Universo SIRA»): las colecciones de `colecciones`
 // (src/data/sira.ts) alternando foto grande y texto; la del medio va sobre una banda arena a todo el ancho.
+// La misma página sirve /en/colecciones/ con lang="en".
 import { Image } from 'astro:assets';
 import PaginaSira from '../../layouts/PaginaSira.astro';
-import { colecciones } from '../../data/sira';
-import { rutas } from '../../data/rutas';
+import { coleccionesPara } from '../../data/sira';
+import { rutasPara } from '../../data/rutas';
+import type { Idioma } from '../../i18n/idiomas';
 import { tienda } from '../../../tienda.config';
+
+const { lang = 'es' } = Astro.props as { lang?: Idioma };
+const rutas = rutasPara(lang);
+const colecciones = coleccionesPara(lang);
+const marca = tienda.marca.nombre;
+const nombres = colecciones.map((c) => c.nombre).join(', ');
+const t = {
+  es: {
+    meta: `Colecciones: universo SIRA | ${marca}`,
+    descripcion: `Colecciones, cápsulas y archivo de ${marca}: ${nombres}.`,
+    inicio: 'Inicio',
+    etiqueta: 'Colecciones',
+    titulo: 'Universo SIRA',
+    verPiezas: 'Ver piezas →',
+    de: 'de',
+  },
+  en: {
+    meta: `Collections: the SIRA universe | ${marca}`,
+    descripcion: `${marca} collections, capsules and archive: ${nombres}.`,
+    inicio: 'Home',
+    etiqueta: 'Collections',
+    titulo: 'The SIRA universe',
+    verPiezas: 'View pieces →',
+    de: 'from',
+  },
+}[lang];
 
 const sitio = Astro.site ?? Astro.url;
 const jsonLd = {
   '@context': 'https://schema.org',
   '@type': 'BreadcrumbList',
   itemListElement: [
-    { '@type': 'ListItem', position: 1, name: 'Inicio', item: new URL(rutas.inicio, sitio).href },
-    { '@type': 'ListItem', position: 2, name: 'Colecciones', item: new URL(rutas.colecciones, sitio).href },
+    { '@type': 'ListItem', position: 1, name: t.inicio, item: new URL(rutas.inicio, sitio).href },
+    { '@type': 'ListItem', position: 2, name: t.etiqueta, item: new URL(rutas.colecciones, sitio).href },
   ],
 };
 ---
 <PaginaSira
-  title={`Colecciones: universo SIRA | ${tienda.marca.nombre}`}
-  description={`Colecciones, cápsulas y archivo de ${tienda.marca.nombre}: ${colecciones.map((c) => c.nombre).join(', ')}.`}
+  lang={lang}
+  title={t.meta}
+  description={t.descripcion}
   activo="colecciones"
   imagen={colecciones[0]?.imagen.src}
   jsonLd={jsonLd}
 >
   <header class="cabecera ancho">
-    <p class="etiqueta-espaciada">Colecciones</p>
-    <h1 class="titulo serif">Universo SIRA</h1>
+    <p class="etiqueta-espaciada">{t.etiqueta}</p>
+    <h1 class="titulo serif">{t.titulo}</h1>
   </header>
 
   {colecciones.map((c, i) => {
@@ -52,7 +81,7 @@ const jsonLd = {
             <p class="parrafo">{c.texto}</p>
             <p class="accion">
               <a class="enlace-linea" href={rutas.coleccion(c.slug)}>
-                Ver piezas →<span class="sr-only"> de {c.nombre}</span>
+                {t.verPiezas}<span class="sr-only"> {t.de} {c.nombre}</span>
               </a>
             </p>
           </div>

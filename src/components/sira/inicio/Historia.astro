@@ -2,15 +2,45 @@
 // Nuestra historia (Figma: 147:5167, 1440×1000, fondo #f0ede6): foto 600×750 y textos de la marca
 // y de la diseñadora.
 import { Image } from 'astro:assets';
-import { rutas } from '../../../data/rutas';
+import type { Idioma } from '../../../i18n/idiomas';
+import { rutasPara } from '../../../data/rutas';
 import imgTextiles from '../../../assets/sira/textiles-silueta.png';
+
+const { lang = 'es' } = Astro.props as { lang?: Idioma };
+const rutas = rutasPara(lang);
+const t = {
+  es: {
+    alt: 'Textiles y silueta SIRA',
+    etiqueta: 'Nuestra historia',
+    titulo: ['Diseñar', 'con intención.'],
+    parrafo:
+      'SIRA nace de la búsqueda de piezas únicas: mezclas inesperadas de textiles nuevos y recuperados, siluetas reversibles y diseño pensado para permanecer. Espíritu costarricense con mirada global.',
+    enlace: 'SIRA — Nuestra historia',
+    disenadora: 'La diseñadora',
+    rol: 'Fundadora y diseñadora',
+    bio: 'De su formación inicial en tecnología y la experiencia en pasarela internacional hasta sus estudios en London College of Fashion, Laura Mata da forma a SIRA desde una sensibilidad íntima por los textiles y la expresión personal.',
+    origen: 'Desde Costa Rica, con una mirada global.',
+  },
+  en: {
+    alt: 'SIRA textiles and silhouette',
+    etiqueta: 'Our story',
+    titulo: ['Designing', 'with intention.'],
+    parrafo:
+      'SIRA was born from a search for unique pieces: unexpected blends of new and reclaimed textiles, reversible silhouettes and design made to last. A Costa Rican spirit with a global outlook.',
+    enlace: 'SIRA — Our story',
+    disenadora: 'The designer',
+    rol: 'Founder & Designer',
+    bio: 'From an early background in technology and international runway experience to her studies at London College of Fashion, Laura Mata shapes SIRA through an intimate sensitivity to textiles and personal expression.',
+    origen: 'From Costa Rica, with a global outlook.',
+  },
+}[lang];
 ---
 <section class="historia" aria-labelledby="historia-titulo">
   <div class="contenedor rejilla">
     <div class="foto">
       <Image
         src={imgTextiles}
-        alt="Textiles y silueta SIRA"
+        alt={t.alt}
         format="webp"
         widths={[420, 600, 900, 1200]}
         sizes="(max-width: 860px) calc(100vw - 40px), 42vw"
@@ -18,23 +48,16 @@ import imgTextiles from '../../../assets/sira/textiles-silueta.png';
       />
     </div>
     <div class="textos">
-      <p class="etiqueta">Nuestra historia</p>
-      <h2 id="historia-titulo" class="titulo serif">Diseñar<br />con intención.</h2>
-      <p class="parrafo">
-        SIRA nace de la búsqueda de piezas únicas: mezclas inesperadas de textiles nuevos y recuperados, siluetas
-        reversibles y diseño pensado para permanecer. Espíritu costarricense con mirada global.
-      </p>
-      <a class="enlace" href={rutas.nosotros}>SIRA — Nuestra historia<span aria-hidden="true">↗</span></a>
-      <p class="etiqueta disenadora">La diseñadora</p>
+      <p class="etiqueta">{t.etiqueta}</p>
+      <h2 id="historia-titulo" class="titulo serif">{t.titulo[0]}<br />{t.titulo[1]}</h2>
+      <p class="parrafo">{t.parrafo}</p>
+      <a class="enlace" href={rutas.nosotros}>{t.enlace}<span aria-hidden="true">↗</span></a>
+      <p class="etiqueta disenadora">{t.disenadora}</p>
       <h3 class="nombre serif">Laura Mata</h3>
-      <p class="rol serif">Fundadora y diseñadora</p>
-      <p class="parrafo bio">
-        De su formación inicial en tecnología y la experiencia en pasarela internacional hasta sus estudios en
-        London College of Fashion, Laura Mata da forma a SIRA desde una sensibilidad íntima por los textiles y la
-        expresión personal.
-      </p>
+      <p class="rol serif">{t.rol}</p>
+      <p class="parrafo bio">{t.bio}</p>
     </div>
-    <p class="etiqueta origen">Desde Costa Rica, con una mirada global.</p>
+    <p class="etiqueta origen">{t.origen}</p>
   </div>
 </section>
 

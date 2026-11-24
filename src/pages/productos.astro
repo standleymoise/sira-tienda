@@ -2,11 +2,37 @@
 // /productos/ = «Tienda» (Figma: «Tienda» 147:4282): todo el catálogo con filtros, paginación de 12
 // y búsqueda por ?q= (la usa el buscador del encabezado). También es el camino por el que Google
 // llega a cada producto. (No existe /tienda: esa ruta queda para WordPress.)
+// La misma página sirve /en/productos/ con lang="en".
 import PaginaSira from '../layouts/PaginaSira.astro';
 import Listado from '../components/sira/listado/Listado.astro';
 import { getProductos } from '../data/tienda';
-import { rutas } from '../data/rutas';
+import { rutasPara } from '../data/rutas';
+import type { Idioma } from '../i18n/idiomas';
 import { tienda } from '../../tienda.config';
+
+const { lang = 'es' } = Astro.props as { lang?: Idioma };
+const rutas = rutasPara(lang);
+const marca = tienda.marca.nombre;
+const t = {
+  es: {
+    meta: `Tienda: piezas únicas | ${marca}`,
+    etiqueta: 'Tienda',
+    titulo: 'Piezas únicas',
+    inicio: 'Inicio',
+    texto:
+      'Cada prenda se produce en series muy cortas o como pieza única, combinando textiles seleccionados y confección consciente.',
+    descripcion: (texto: string) => `Todas las piezas de ${marca}, con precio y disponibilidad. ${texto}`,
+  },
+  en: {
+    meta: `Shop: unique pieces | ${marca}`,
+    etiqueta: 'Shop',
+    titulo: 'Unique pieces',
+    inicio: 'Home',
+    texto:
+      'Every garment is made in very small runs or as a one-of-a-kind piece, pairing carefully selected textiles with conscious craftsmanship.',
+    descripcion: (texto: string) => `Every ${marca} piece, with prices and availability. ${texto}`,
+  },
+}[lang];
 
 const productos = await getProductos();
 const sitio = Astro.site ?? Astro.url;
@@ -14,19 +40,18 @@ const jsonLd = {
   '@context': 'https://schema.org',
   '@type': 'BreadcrumbList',
   itemListElement: [
-    { '@type': 'ListItem', position: 1, name: 'Inicio', item: new URL(rutas.inicio, sitio).href },
-    { '@type': 'ListItem', position: 2, name: 'Tienda', item: new URL(rutas.productos, sitio).href },
+    { '@type': 'ListItem', position: 1, name: t.inicio, item: new URL(rutas.inicio, sitio).href },
+    { '@type': 'ListItem', position: 2, name: t.etiqueta, item: new URL(rutas.productos, sitio).href },
   ],
 };
-const texto =
-  'Cada prenda se produce en series muy cortas o como pieza única, combinando textiles seleccionados y confección consciente.';
 ---
 <PaginaSira
-  title={`Tienda: piezas únicas | ${tienda.marca.nombre}`}
-  description={`Todas las piezas de ${tienda.marca.nombre}, con precio y disponibilidad. ${texto}`}
+  lang={lang}
+  title={t.meta}
+  description={t.descripcion(t.texto)}
   activo="tienda"
   imagen={productos[0]?.imagen?.src}
   jsonLd={jsonLd}
 >
-  <Listado etiqueta="Tienda" titulo="Piezas únicas" texto={texto} productos={productos} porPagina={12} busqueda />
+  <Listado etiqueta={t.etiqueta} titulo={t.titulo} texto={t.texto} productos={productos} porPagina={12} busqueda lang={lang} />
 </PaginaSira>

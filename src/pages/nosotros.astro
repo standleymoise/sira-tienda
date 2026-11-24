@@ -1,34 +1,85 @@
 ---
 // Página «Nosotros» (Figma 147:4876): historia de SIRA, la diseñadora Laura Mata,
 // filosofía y diseño consciente. Las anclas #disenadora, #filosofia y #consciente las usa el pie.
+// Recibe `lang` por props: /en/nosotros/ reutiliza esta página con lang="en".
 import { Image } from 'astro:assets';
 import PaginaSira from '../layouts/PaginaSira.astro';
-import { rutas } from '../data/rutas';
+import type { Idioma } from '../i18n/idiomas';
+import { rutasPara } from '../data/rutas';
 import atelier from '../assets/sira/atelier-textiles.png';
 import laura from '../assets/sira/laura-mata.png';
+
+const { lang = 'es' } = Astro.props as { lang?: Idioma };
+const rutas = rutasPara(lang);
+const t = {
+  es: {
+    meta: 'Nosotros | SIRA Conscious Apparel',
+    descripcion:
+      'SIRA nace del deseo de crear piezas únicas que escapen de la producción masiva: prendas reversibles y siluetas limpias diseñadas en Costa Rica por Laura Mata.',
+    historiaEtiqueta: 'SIRA · Nuestra historia',
+    historia1:
+      'SIRA nace del deseo de crear piezas únicas que escapen de la producción masiva. Cada diseño surge de la mezcla inesperada de textiles nuevos y recuperados, dando vida a prendas reversibles y siluetas limpias concebidas para durar.',
+    historia2:
+      'Diseñamos con intención: valoramos el carácter irrepetible de cada rollo de tela, el oficio de la confección local y la libertad de vestir prendas que conversan con quien las lleva.',
+    altAtelier: 'Atelier y textiles SIRA',
+    altLaura: 'Laura Mata, fundadora y diseñadora de SIRA',
+    disenadora: 'La diseñadora',
+    bio1:
+      'Su trayectoria une mundos que rara vez coinciden. Con formación inicial en tecnología, el año 2000 la acercó al universo de la moda internacional a través de Miss Costa Rica y Miss Universo, despertando una sensibilidad duradera por las proporciones, la imagen y el lenguaje de los textiles.',
+    bio2:
+      'Posteriormente profundizó su visión cursando estudios de Personal Styling en London College of Fashion. De esa síntesis entre rigor, intuición estética y búsqueda de autenticidad nació SIRA: una casa contemporánea donde cada prenda tiene historia propia.',
+    principios: 'Filosofía y diseño consciente',
+    filosofiaEtiqueta: 'Nuestra filosofía',
+    filosofiaTitulo: 'Menos volumen, mayor intención',
+    filosofiaTexto:
+      'Creemos en el lujo silencioso: piezas que no gritan por atención, pero se reconocen al instante por su textura, construcción y versatilidad.',
+    conscienteEtiqueta: 'Diseño consciente',
+    conscienteTitulo: 'Textiles con segunda vida',
+    conscienteTexto:
+      'Combinamos textiles nuevos seleccionados y remanentes recuperados en ediciones cortas y prendas reversibles, extendiendo el ciclo de vida de cada material.',
+    descubrir: 'Descubrir Reversible',
+  },
+  en: {
+    meta: 'About | SIRA Conscious Apparel',
+    descripcion:
+      'SIRA was born from a desire to create one-of-a-kind pieces that stand apart from mass production: reversible garments and clean silhouettes designed in Costa Rica by Laura Mata.',
+    historiaEtiqueta: 'SIRA · Our story',
+    historia1:
+      'SIRA was born from a desire to create one-of-a-kind pieces that stand apart from mass production. Each design grows out of an unexpected pairing of new and reclaimed textiles, giving life to reversible garments and clean silhouettes made to last.',
+    historia2:
+      'We design with intention: we value the singular character of every bolt of fabric, the craft of local tailoring, and the freedom of wearing clothes that hold a conversation with the person who wears them.',
+    altAtelier: 'The SIRA atelier and its textiles',
+    altLaura: 'Laura Mata, founder and designer of SIRA',
+    disenadora: 'The designer',
+    bio1:
+      'Her path connects worlds that rarely meet. Trained first in technology, in 2000 she was drawn into the world of international fashion through Miss Costa Rica and Miss Universe, awakening a lasting sensitivity to proportion, image and the language of textiles.',
+    bio2:
+      'She later deepened her vision by studying Personal Styling at London College of Fashion. From that blend of rigor, aesthetic intuition and a search for authenticity, SIRA was born: a contemporary house where every garment carries a story of its own.',
+    principios: 'Philosophy and conscious design',
+    filosofiaEtiqueta: 'Our philosophy',
+    filosofiaTitulo: 'Less volume, more intention',
+    filosofiaTexto:
+      'We believe in quiet luxury: pieces that never shout for attention, yet are recognized instantly by their texture, construction and versatility.',
+    conscienteEtiqueta: 'Conscious design',
+    conscienteTitulo: 'Textiles with a second life',
+    conscienteTexto:
+      'We pair carefully selected new textiles with reclaimed remnants in short runs and reversible garments, extending the life cycle of every material.',
+    descubrir: 'Discover Reversible',
+  },
+}[lang];
 ---
-<PaginaSira
-  title="Nosotros | SIRA Conscious Apparel"
-  description="SIRA nace del deseo de crear piezas únicas que escapen de la producción masiva: prendas reversibles y siluetas limpias diseñadas en Costa Rica por Laura Mata."
-  activo="nosotros"
->
+<PaginaSira lang={lang} title={t.meta} description={t.descripcion} activo="nosotros">
   <section class="historia contenedor-n" aria-labelledby="historia-titulo">
     <div class="historia-texto">
-      <p class="etiqueta-espaciada">SIRA · Nuestra historia</p>
+      <p class="etiqueta-espaciada">{t.historiaEtiqueta}</p>
       <h1 id="historia-titulo" class="serif titulo">Costa Rican Spirit.<br />Global Mindset.</h1>
-      <p class="parrafo">
-        SIRA nace del deseo de crear piezas únicas que escapen de la producción masiva. Cada diseño surge de la mezcla
-        inesperada de textiles nuevos y recuperados, dando vida a prendas reversibles y siluetas limpias concebidas para durar.
-      </p>
-      <p class="parrafo">
-        Diseñamos con intención: valoramos el carácter irrepetible de cada rollo de tela, el oficio de la confección local y
-        la libertad de vestir prendas que conversan con quien las lleva.
-      </p>
+      <p class="parrafo">{t.historia1}</p>
+      <p class="parrafo">{t.historia2}</p>
     </div>
     <div class="foto">
       <Image
         src={atelier}
-        alt="Atelier y textiles SIRA"
+        alt={t.altAtelier}
         format="webp"
         widths={[489, 978]}
         sizes="(max-width: 760px) calc(100vw - 40px), 489px"
@@ -43,51 +94,37 @@ import laura from '../assets/sira/laura-mata.png';
       <div class="foto foto-laura">
         <Image
           src={laura}
-          alt="Laura Mata, fundadora y diseñadora de SIRA"
+          alt={t.altLaura}
           format="webp"
           widths={[489, 978]}
           sizes="(max-width: 760px) calc(100vw - 40px), 489px"
         />
       </div>
       <div class="disenadora-texto">
-        <p class="etiqueta-espaciada">La diseñadora</p>
+        <p class="etiqueta-espaciada">{t.disenadora}</p>
         <h2 id="disenadora-titulo" class="serif nombre">LAURA MATA</h2>
         <p class="serif cargo">Founder &amp; Designer</p>
-        <p class="parrafo">
-          Su trayectoria une mundos que rara vez coinciden. Con formación inicial en tecnología, el año 2000 la acercó al
-          universo de la moda internacional a través de Miss Costa Rica y Miss Universo, despertando una sensibilidad
-          duradera por las proporciones, la imagen y el lenguaje de los textiles.
-        </p>
-        <p class="parrafo">
-          Posteriormente profundizó su visión cursando estudios de Personal Styling en London College of Fashion. De esa
-          síntesis entre rigor, intuición estética y búsqueda de autenticidad nació SIRA: una casa contemporánea donde cada
-          prenda tiene historia propia.
-        </p>
+        <p class="parrafo">{t.bio1}</p>
+        <p class="parrafo">{t.bio2}</p>
       </div>
     </div>
   </section>
 
-  <section class="principios contenedor-n" aria-label="Filosofía y diseño consciente">
+  <section class="principios contenedor-n" aria-label={t.principios}>
     <article id="filosofia" class="principio">
-      <p class="etiqueta-espaciada">Nuestra filosofía</p>
-      <h2 class="serif">Menos volumen, mayor intención</h2>
-      <p class="parrafo">
-        Creemos en el lujo silencioso: piezas que no gritan por atención, pero se reconocen al instante por su textura,
-        construcción y versatilidad.
-      </p>
+      <p class="etiqueta-espaciada">{t.filosofiaEtiqueta}</p>
+      <h2 class="serif">{t.filosofiaTitulo}</h2>
+      <p class="parrafo">{t.filosofiaTexto}</p>
     </article>
     <article id="consciente" class="principio">
-      <p class="etiqueta-espaciada">Diseño consciente</p>
-      <h2 class="serif">Textiles con segunda vida</h2>
-      <p class="parrafo">
-        Combinamos textiles nuevos seleccionados y remanentes recuperados en ediciones cortas y prendas reversibles,
-        extendiendo el ciclo de vida de cada material.
-      </p>
+      <p class="etiqueta-espaciada">{t.conscienteEtiqueta}</p>
+      <h2 class="serif">{t.conscienteTitulo}</h2>
+      <p class="parrafo">{t.conscienteTexto}</p>
     </article>
   </section>
 
   <p class="descubrir">
-    <a class="enlace-linea" href={rutas.reversibles}>Descubrir Reversible <span aria-hidden="true">→</span></a>
+    <a class="enlace-linea" href={rutas.reversibles}>{t.descubrir} <span aria-hidden="true">→</span></a>
   </p>
 </PaginaSira>
 

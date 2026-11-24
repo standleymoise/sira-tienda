@@ -4,6 +4,7 @@ import Base from './Base.astro';
 import Encabezado from '../components/sira/Encabezado.astro';
 import Pie from '../components/sira/Pie.astro';
 import type { IdMenu } from '../data/sira';
+import type { Idioma } from '../i18n/idiomas';
 
 interface Props {
   title: string;
@@ -16,16 +17,18 @@ interface Props {
   activo?: IdMenu;
   /** Fondo de la página (el Figma usa crema; la ficha y el carrito, blanco). */
   fondo?: 'crema' | 'blanco';
+  /** Idioma de la página (por defecto español; las páginas de /en/ pasan «en»). */
+  lang?: Idioma;
 }
-const { activo, fondo = 'crema', ...base } = Astro.props;
+const { activo, fondo = 'crema', lang = 'es', ...base } = Astro.props;
 ---
-<Base {...base}>
+<Base {...base} lang={lang}>
   <div class:list={['pagina', `fondo-${fondo}`]}>
-    <Encabezado activo={activo} />
+    <Encabezado activo={activo} lang={lang} />
     <main id="contenido">
       <slot />
     </main>
-    <Pie />
+    <Pie lang={lang} />
   </div>
 </Base>
 

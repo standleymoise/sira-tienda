@@ -4,9 +4,61 @@
 // (SKU, o «id-<n>» si el producto no tiene SKU). Precios y stock se leen en vivo de WooCommerce
 // y «Agregar al carrito» usa el mismo carrito que el resto del sitio (avisa al encabezado con
 // el evento `sira:carrito`). Los productos variables llevan a su ficha para elegir opciones.
+// Recibe `lang` por props: /en/favoritos/ reutiliza esta página con lang="en".
 import PaginaSira from '../layouts/PaginaSira.astro';
+import type { Idioma } from '../i18n/idiomas';
 import { getProductos, storeApiUrl, claveFavorito } from '../data/tienda';
-import { rutas } from '../data/rutas';
+import { rutasPara } from '../data/rutas';
+
+const { lang = 'es' } = Astro.props as { lang?: Idioma };
+const rutas = rutasPara(lang);
+
+const t = {
+  es: {
+    meta: 'Mis favoritos | SIRA Conscious Apparel',
+    descripcion: 'Las piezas que guardó como favoritas.',
+    etiqueta: 'Su selección',
+    titulo: 'Mis favoritos',
+    vacioTitulo: 'Todavía no tiene favoritos',
+    vacioTexto: 'Toque el corazón de una pieza para guardarla aquí.',
+    verTienda: 'Ver la tienda',
+  },
+  en: {
+    meta: 'My wishlist | SIRA Conscious Apparel',
+    descripcion: 'The pieces you saved to your wishlist.',
+    etiqueta: 'Your selection',
+    titulo: 'My wishlist',
+    vacioTitulo: 'Your wishlist is empty',
+    vacioTexto: 'Tap the heart on any piece to save it here.',
+    verTienda: 'Visit the shop',
+  },
+}[lang];
+
+// Textos del script del navegador (se pasan al HTML con data-textos). «{n}» = nombre del producto.
+const tScript = {
+  es: {
+    quitar: 'Quitar',
+    agotado: 'Agotado',
+    elegir: 'Elegir opciones',
+    agregar: 'Agregar al carrito',
+    agregando: 'Agregando…',
+    agregado: 'Agregado al carrito: {n}',
+    noAgregado: 'No se pudo agregar: {n}',
+    quitado: 'Quitado de favoritos: {n}',
+    quitarDe: 'Quitar {n} de favoritos',
+  },
+  en: {
+    quitar: 'Remove',
+    agotado: 'Sold out',
+    elegir: 'Choose options',
+    agregar: 'Add to cart',
+    agregando: 'Adding…',
+    agregado: 'Added to cart: {n}',
+    noAgregado: 'Could not add to cart: {n}',
+    quitado: 'Removed from your wishlist: {n}',
+    quitarDe: 'Remove {n} from your wishlist',
+  },
+}[lang];
 
 // Catálogo de la última compilación: se muestra al instante y luego se actualiza en vivo.
 const iniciales = (await getProductos()).map((p) => ({
@@ -22,19 +74,24 @@ const iniciales = (await getProductos()).map((p) => ({
   alt: p.imagen?.alt ?? p.nombre,
 }));
 ---
-<PaginaSira title="Mis favoritos | SIRA Conscious Apparel" description="Las piezas que guardó como favoritas." noindex>
-  <div class="favs contenedor" data-api={storeApiUrl} data-plantilla-producto={rutas.producto('__slug__')}>
+<PaginaSira lang={lang} title={t.meta} description={t.descripcion} noindex>
+  <div
+    class="favs contenedor"
+    data-api={storeApiUrl}
+    data-plantilla-producto={rutas.producto('__slug__')}
+    data-textos={JSON.stringify(tScript)}
+  >
     <header class="cabecera">
-      <p class="etiqueta-espaciada">Su selección</p>
-      <h1 class="serif">Mis favoritos</h1>
+      <p class="etiqueta-espaciada">{t.etiqueta}</p>
+      <h1 class="serif">{t.titulo}</h1>
     </header>
 
     <ul class="lista" data-lista aria-live="polite"></ul>
 
     <div class="vacio" data-vacio hidden>
-      <p class="serif vacio-titulo">Todavía no tiene favoritos</p>
-      <p>Toque el corazón de una pieza para guardarla aquí.</p>
-      <a class="btn" href={rutas.productos}>Ver la tienda</a>
+      <p class="serif vacio-titulo">{t.vacioTitulo}</p>
+      <p>{t.vacioTexto}</p>
+      <a class="btn" href={rutas.productos}>{t.verTienda}</a>
     </div>
 
     <p class="aviso" data-aviso role="status" aria-live="polite"></p>
@@ -75,6 +132,9 @@ const iniciales = (await getProductos()).map((p) => ({
     const lista = raiz.querySelector<HTMLUListElement>('[data-lista]')!;
     const vacio = raiz.querySelector<HTMLElement>('[data-vacio]')!;
     const aviso = raiz.querySelector<HTMLElement>('[data-aviso]')!;
+    // Textos en el idioma de la página (vienen del HTML en data-textos). «{n}» = nombre del producto.
+    const tx = JSON.parse(raiz.dataset.textos || '{}') as Record<string, string>;
+    const conNombre = (texto: string, n: string) => texto.replace('{n}', () => n);
 
     let productos: Fav[] = JSON.parse(document.querySelector('[data-iniciales]')!.textContent || '[]');
     let favoritos = leerFavoritos();
@@ -106,7 +166,7 @@ const iniciales = (await getProductos()).map((p) => ({
               <div class="fila-precio"><p class="precio"></p><p class="etiqueta-rev">Reversible</p></div>
               <div class="botones">
                 <button type="button" class="btn agregar"></button>
-                <button type="button" class="quitar">Quitar</button>
+                <button type="button" class="quitar"></button>
               </div>
             </div>`;
           li.querySelectorAll<HTMLAnchorElement>('a').forEach((a) => (a.href = p.url));
@@ -124,7 +184,8 @@ const iniciales = (await getProductos()).map((p) => ({
             img.replaceWith(sin);
           }
           li.querySelector('.nombre a')!.textContent = p.nombre;
-          li.querySelector('.precio')!.textContent = p.enStock ? p.precio : `${p.precio} · Agotado`;
+          li.querySelector('.quitar')!.textContent = tx.quitar;
+          li.querySelector('.precio')!.textContent = p.enStock ? p.precio : `${p.precio} · ${tx.agotado}`;
           if (!p.reversible) li.querySelector('.etiqueta-rev')!.remove();
 
           const agregarBtn = li.querySelector<HTMLButtonElement>('.agregar')!;
@@ -133,24 +194,24 @@ const iniciales = (await getProductos()).map((p) => ({
             const a = document.createElement('a');
             a.className = 'btn agregar';
             a.href = p.url;
-            a.textContent = 'Elegir opciones';
+            a.textContent = tx.elegir;
             agregarBtn.replaceWith(a);
           } else {
-            agregarBtn.textContent = p.enStock ? 'Agregar al carrito' : 'Agotado';
+            agregarBtn.textContent = p.enStock ? tx.agregar : tx.agotado;
             agregarBtn.disabled = !p.enStock || !cliente;
             agregarBtn.addEventListener('click', async () => {
               if (!cliente) return;
               agregarBtn.disabled = true;
-              agregarBtn.textContent = 'Agregando…';
+              agregarBtn.textContent = tx.agregando;
               try {
                 const c = await cliente.agregar(p.id);
                 avisarCarrito(c.items_count);
-                avisar(`Agregado al carrito: ${p.nombre}`);
+                avisar(conNombre(tx.agregado, p.nombre));
               } catch (e) {
-                avisar(`No se pudo agregar: ${(e as Error).message}`);
+                avisar(conNombre(tx.noAgregado, (e as Error).message));
               } finally {
                 agregarBtn.disabled = false;
-                agregarBtn.textContent = 'Agregar al carrito';
+                agregarBtn.textContent = tx.agregar;
               }
             });
           }
@@ -159,10 +220,10 @@ const iniciales = (await getProductos()).map((p) => ({
             favoritos.delete(p.clave);
             guardarFavoritos(favoritos);
             pintar();
-            avisar(`Quitado de favoritos: ${p.nombre}`);
+            avisar(conNombre(tx.quitado, p.nombre));
           };
           for (const b of li.querySelectorAll<HTMLButtonElement>('.quitar-corazon, .quitar')) {
-            b.setAttribute('aria-label', `Quitar ${p.nombre} de favoritos`);
+            b.setAttribute('aria-label', conNombre(tx.quitarDe, p.nombre));
             b.addEventListener('click', quitar);
           }
           return li;

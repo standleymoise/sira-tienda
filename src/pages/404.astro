@@ -1,7 +1,7 @@
 ---
 // Página 404 con el estilo SIRA.
 import PaginaSira from '../layouts/PaginaSira.astro';
-import { rutas } from '../data/rutas';
+import { rutas, rutasEn } from '../data/rutas';
 ---
 <PaginaSira title="Página no encontrada | SIRA Conscious Apparel" noindex>
   <section class="mensaje" aria-labelledby="titulo-404">
@@ -12,6 +12,10 @@ import { rutas } from '../data/rutas';
       <a class="btn" href={rutas.inicio}>Ir al inicio</a>
       <a class="enlace-linea" href={rutas.productos}>Ver la tienda <span aria-hidden="true">→</span></a>
     </div>
+    <!-- GitHub Pages sirve un solo 404 (en español): una línea para quien venga de /en/. -->
+    <p class="ingles" lang="en">
+      Page not found — <a href={rutasEn.inicio}>Go to the English site</a>
+    </p>
   </section>
 </PaginaSira>
 
@@ -37,6 +41,15 @@ import { rutas } from '../data/rutas';
     line-height: 2;
     letter-spacing: 0.025em;
     color: var(--gris);
+  }
+  .ingles {
+    margin: 32px 0 0;
+    font-size: 13px;
+    letter-spacing: 0.025em;
+    color: var(--gris);
+  }
+  .ingles a {
+    color: var(--tinta-fuerte);
   }
   .acciones {
     display: flex;

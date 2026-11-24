@@ -3,56 +3,108 @@
 // El formulario se envía (fetch + JSON) a la URL de PUBLIC_FORMULARIO_CONTACTO (un servicio tipo
 // Formspree). Si la variable no existe, no se simula el envío: se avisa y se ofrece Instagram.
 // El bloque #servicio existe porque el pie enlaza ahí (envíos, tallas, preguntas frecuentes).
+// Recibe `lang` por props: /en/contacto/ reutiliza esta página con lang="en".
 import PaginaSira from '../layouts/PaginaSira.astro';
+import type { Idioma } from '../i18n/idiomas';
 import { pie } from '../data/sira';
 
+const { lang = 'es' } = Astro.props as { lang?: Idioma };
 const formulario = (import.meta.env.PUBLIC_FORMULARIO_CONTACTO ?? '').trim();
 const instagram = pie.instagram.href;
+
+const t = {
+  es: {
+    meta: 'Contacto y servicio | SIRA Conscious Apparel',
+    descripcion: 'Citas privadas en atelier, consultas de tallas o pedidos internacionales: escríbale a SIRA.',
+    etiqueta: 'Atención al cliente',
+    titulo: 'Contacto y Servicio',
+    contacto: 'Contacto',
+    intro: 'Para citas privadas en atelier, consultas de tallas o pedidos internacionales, escribinos directamente.',
+    nombre: 'Nombre',
+    email: 'Correo electrónico',
+    mensaje: 'Tu mensaje',
+    enviar: 'Enviar mensaje',
+    servicio: 'Servicio al cliente',
+    servicioTexto: 'Envíos, devoluciones, guía de tallas y preguntas frecuentes: escríbanos y le ayudamos. También puede encontrarnos en',
+  },
+  en: {
+    meta: 'Contact & client care | SIRA Conscious Apparel',
+    descripcion: 'Private atelier appointments, sizing questions or international orders: get in touch with SIRA.',
+    etiqueta: 'Client care',
+    titulo: 'Contact & Client Care',
+    contacto: 'Contact',
+    intro: 'For private atelier appointments, sizing questions or international orders, write to us directly.',
+    nombre: 'Name',
+    email: 'Email',
+    mensaje: 'Your message',
+    enviar: 'Send message',
+    servicio: 'Client care',
+    servicioTexto: 'Shipping, returns, size guide and frequently asked questions: write to us and we will be glad to help. You can also find us on',
+  },
+}[lang];
+
+// Mensajes del script del formulario (se pasan al HTML con data-textos).
+const tScript = {
+  es: {
+    revisar: 'Revise los campos marcados.',
+    sinConectar: 'El formulario todavía no está conectado. Escríbanos por Instagram:',
+    enviando: 'Enviando…',
+    gracias: 'Gracias, le responderemos pronto.',
+    error: 'No se pudo enviar el mensaje. Intente de nuevo o escríbanos por Instagram:',
+  },
+  en: {
+    revisar: 'Please check the highlighted fields.',
+    sinConectar: 'The form is not connected yet. Message us on Instagram:',
+    enviando: 'Sending…',
+    gracias: 'Thank you, we will be in touch soon.',
+    error: 'Your message could not be sent. Please try again or message us on Instagram:',
+  },
+}[lang];
 ---
-<PaginaSira
-  title="Contacto y servicio | SIRA Conscious Apparel"
-  description="Citas privadas en atelier, consultas de tallas o pedidos internacionales: escríbale a SIRA."
-  activo="contacto"
->
+<PaginaSira lang={lang} title={t.meta} description={t.descripcion} activo="contacto">
   <div class="contacto contenedor-c">
     <header class="cabecera">
-      <p class="etiqueta-espaciada">Atención al cliente</p>
-      <h1 class="serif">Contacto y Servicio</h1>
+      <p class="etiqueta-espaciada">{t.etiqueta}</p>
+      <h1 class="serif">{t.titulo}</h1>
     </header>
 
     <section class="cuerpo" aria-labelledby="contacto-titulo">
       <div class="datos">
-        <h2 id="contacto-titulo" class="serif">Contacto</h2>
-        <p>
-          Para citas privadas en atelier, consultas de tallas o pedidos internacionales, escribinos directamente.
-        </p>
+        <h2 id="contacto-titulo" class="serif">{t.contacto}</h2>
+        <p>{t.intro}</p>
       </div>
 
-      <form class="form" data-contacto data-accion={formulario} data-instagram={instagram} novalidate>
+      <form
+        class="form"
+        data-contacto
+        data-accion={formulario}
+        data-instagram={instagram}
+        data-textos={JSON.stringify(tScript)}
+        novalidate
+      >
         <label class="campo">
-          <span class="sr-only">Nombre</span>
-          <input name="nombre" type="text" placeholder="Nombre" required autocomplete="name" />
+          <span class="sr-only">{t.nombre}</span>
+          <input name="nombre" type="text" placeholder={t.nombre} required autocomplete="name" />
         </label>
         <label class="campo">
-          <span class="sr-only">Correo electrónico</span>
-          <input name="email" type="email" placeholder="Correo electrónico" required autocomplete="email" />
+          <span class="sr-only">{t.email}</span>
+          <input name="email" type="email" placeholder={t.email} required autocomplete="email" />
         </label>
         <label class="campo">
-          <span class="sr-only">Tu mensaje</span>
-          <textarea name="mensaje" rows="4" placeholder="Tu mensaje" required></textarea>
+          <span class="sr-only">{t.mensaje}</span>
+          <textarea name="mensaje" rows="4" placeholder={t.mensaje} required></textarea>
         </label>
         <div class="acciones">
-          <button class="enviar" type="submit">Enviar mensaje</button>
+          <button class="enviar" type="submit">{t.enviar}</button>
         </div>
         <p class="estado" data-estado role="status" aria-live="polite" hidden></p>
       </form>
     </section>
 
     <section class="servicio" id="servicio" aria-labelledby="servicio-titulo">
-      <h2 id="servicio-titulo" class="etiqueta-espaciada">Servicio al cliente</h2>
+      <h2 id="servicio-titulo" class="etiqueta-espaciada">{t.servicio}</h2>
       <p>
-        Envíos, devoluciones, guía de tallas y preguntas frecuentes: escríbanos y le ayudamos.
-        También puede encontrarnos en <a href={instagram} target="_blank" rel="noopener">Instagram · @siraconsciousapparel</a>.
+        {t.servicioTexto} <a href={instagram} target="_blank" rel="noopener">Instagram · @siraconsciousapparel</a>.
       </p>
     </section>
   </div>
@@ -65,6 +117,8 @@ const instagram = pie.instagram.href;
     const boton = form.querySelector<HTMLButtonElement>('button[type="submit"]')!;
     const accion = form.dataset.accion || '';
     const instagram = form.dataset.instagram || '';
+    // Mensajes en el idioma de la página (vienen del HTML en data-textos).
+    const tx = JSON.parse(form.dataset.textos || '{}') as Record<string, string>;
 
     const mostrar = (tipo: 'ok' | 'error' | 'aviso', texto: string, enlace = false) => {
       estado.className = `estado ${tipo}`;
@@ -85,17 +139,17 @@ const instagram = pie.instagram.href;
       if (!form.checkValidity()) {
         form.classList.add('validar');
         const malo = form.querySelector<HTMLInputElement>(':invalid');
-        mostrar('error', malo?.validationMessage || 'Revise los campos marcados.');
+        mostrar('error', malo?.validationMessage || tx.revisar);
         malo?.focus();
         return;
       }
       if (!accion) {
-        mostrar('aviso', 'El formulario todavía no está conectado. Escríbanos por Instagram:', true);
+        mostrar('aviso', tx.sinConectar, true);
         return;
       }
       const texto = boton.textContent;
       boton.disabled = true;
-      boton.textContent = 'Enviando…';
+      boton.textContent = tx.enviando;
       try {
         const r = await fetch(accion, {
           method: 'POST',
@@ -105,9 +159,9 @@ const instagram = pie.instagram.href;
         if (!r.ok) throw new Error(String(r.status));
         form.reset();
         form.classList.remove('validar');
-        mostrar('ok', 'Gracias, le responderemos pronto.');
+        mostrar('ok', tx.gracias);
       } catch {
-        mostrar('error', 'No se pudo enviar el mensaje. Intente de nuevo o escríbanos por Instagram:', true);
+        mostrar('error', tx.error, true);
       } finally {
         boton.disabled = false;
         boton.textContent = texto;

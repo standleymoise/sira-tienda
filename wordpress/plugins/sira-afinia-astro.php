@@ -2,7 +2,7 @@
 /**
  * Plugin Name: SIRA – Pago con Afinia desde Astro
  * Description: Permite que el sitio SIRA en Astro lleve al cliente directo a la página segura de Afinia (sin pasar por la página de pago de WordPress) y que, al volver de Afinia, regrese al «Gracias» del sitio en Astro. No toca la tarjeta: el cobro sigue ocurriendo en Afinia y la confirmación llega por su webhook, como siempre.
- * Version: 1.0.1
+ * Version: 1.1.0
  * Requires Plugins: woocommerce
  *
  * Ruta: GET /wp-json/sira/v1/afinia/<pedido>?key=<clave del pedido>
@@ -10,12 +10,36 @@
  *   (clave pública del comercio, monto, moneda, referencias, correo y si es modo de pruebas).
  *   Solo responde con la clave del pedido (la que WooCommerce pone en la URL de pago) y solo si el
  *   pedido es de Afinia y todavía necesita pago.
+ *
+ * Idioma (1.1.0): el carrito en inglés (/en/carrito/) manda «sira_idioma: en» en el POST /checkout
+ *   de la Store API. Se guarda en el pedido (meta _sira_idioma) y, al volver de Afinia, el cliente
+ *   llega al «Gracias» en inglés. Sin ese dato (pedidos en español o anteriores) todo sigue igual.
  */
 
 defined( 'ABSPATH' ) || exit;
 
 // Página «Gracias» del sitio en Astro (vista previa). Cambiar cuando exista el dominio propio.
 const SIRA_ASTRO_GRACIAS = 'https://standleymoise.github.io/sira-tienda/carrito/';
+// La misma página en inglés.
+const SIRA_ASTRO_GRACIAS_EN = 'https://standleymoise.github.io/sira-tienda/en/carrito/';
+
+// Idioma del pedido: el carrito de Astro lo manda explícito en el POST /checkout («sira_idioma»).
+// Solo se acepta «en»; cualquier otro valor se ignora (español por defecto).
+add_action(
+	'woocommerce_store_api_checkout_update_order_from_request',
+	function ( $pedido, $request ) {
+		if ( ! $pedido || ! ( $request instanceof WP_REST_Request ) ) {
+			return;
+		}
+		if ( 'en' === sanitize_key( (string) $request->get_param( 'sira_idioma' ) ) ) {
+			$pedido->update_meta_data( '_sira_idioma', 'en' );
+		} else {
+			$pedido->delete_meta_data( '_sira_idioma' );
+		}
+	},
+	10,
+	2
+);
 
 /** La pasarela de Afinia, o null si no está activa. */
 function sira_afinia_pasarela() {
@@ -115,7 +139,7 @@ add_action(
 
 // Al volver de Afinia, WooCommerce muestra su página «Gracias» (ahí el plugin de Afinia procesa el
 // resultado). Para pedidos hechos desde el sitio en Astro (creados por la Store API), después de
-// ese proceso se lleva al cliente al «Gracias» de Astro.
+// ese proceso se lleva al cliente al «Gracias» de Astro, en el idioma en que hizo el pedido.
 add_action(
 	'woocommerce_thankyou',
 	function ( $pedido_id ) {
@@ -128,7 +152,7 @@ add_action(
 				'pedido' => $pedido->get_id(),
 				'estado' => $pedido->has_status( array( 'processing', 'completed', 'on-hold' ) ) ? 'ok' : $pedido->get_status(),
 			),
-			SIRA_ASTRO_GRACIAS
+			'en' === $pedido->get_meta( '_sira_idioma' ) ? SIRA_ASTRO_GRACIAS_EN : SIRA_ASTRO_GRACIAS
 		);
 		printf( '<script>location.replace(%s);</script>', wp_json_encode( esc_url_raw( $destino ) ) );
 	},

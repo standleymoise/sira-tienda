@@ -1,23 +1,45 @@
 ---
 // /novedades/ (Figma: «Novedades» 147:3915): las piezas de la categoría de novedades de WooCommerce.
 // Si esa categoría todavía no tiene piezas, se muestra todo el catálogo.
+// La misma página sirve /en/novedades/ con lang="en".
 import PaginaSira from '../layouts/PaginaSira.astro';
 import Listado from '../components/sira/listado/Listado.astro';
 import { getProductos } from '../data/tienda';
 import { categoriaNovedades } from '../data/sira';
+import type { Idioma } from '../i18n/idiomas';
 import { tienda } from '../../tienda.config';
+
+const { lang = 'es' } = Astro.props as { lang?: Idioma };
+const marca = tienda.marca.nombre;
+const t = {
+  es: {
+    meta: `Nuevas piezas | ${marca}`,
+    etiqueta: 'Novedades',
+    titulo: 'Nuevas piezas',
+    texto:
+      'Cada prenda se produce en series muy cortas o como pieza única, combinando textiles seleccionados y confección consciente.',
+    descripcion: (texto: string) => `Novedades de ${marca}: ${texto}`,
+  },
+  en: {
+    meta: `New pieces | ${marca}`,
+    etiqueta: 'New in',
+    titulo: 'New pieces',
+    texto:
+      'Every garment is made in very small runs or as a one-of-a-kind piece, pairing carefully selected textiles with conscious craftsmanship.',
+    descripcion: (texto: string) => `New in at ${marca}: ${texto}`,
+  },
+}[lang];
 
 const todos = await getProductos();
 const nuevos = todos.filter((p) => p.categoriasSlug.includes(categoriaNovedades));
 const productos = nuevos.length ? nuevos : todos;
-const texto =
-  'Cada prenda se produce en series muy cortas o como pieza única, combinando textiles seleccionados y confección consciente.';
 ---
 <PaginaSira
-  title={`Nuevas piezas | ${tienda.marca.nombre}`}
-  description={`Novedades de ${tienda.marca.nombre}: ${texto}`}
+  lang={lang}
+  title={t.meta}
+  description={t.descripcion(t.texto)}
   activo="novedades"
   imagen={productos[0]?.imagen?.src}
 >
-  <Listado etiqueta="Novedades" titulo="Nuevas piezas" texto={texto} productos={productos} />
+  <Listado etiqueta={t.etiqueta} titulo={t.titulo} texto={t.texto} productos={productos} lang={lang} />
 </PaginaSira>

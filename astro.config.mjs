@@ -37,7 +37,11 @@ export default defineConfig({
   // Al pasar el mouse por un enlace, la página siguiente se descarga antes del clic.
   prefetch: { prefetchAll: true, defaultStrategy: 'hover' },
   integrations: [
-    // sitemap-index.xml con todas las páginas, menos las personales.
-    sitemap({ filter: (pagina) => !/\/(favoritos|cuenta|sin-conexion)\/?$/.test(pagina) }),
+    // sitemap-index.xml con todas las páginas, menos las personales (en español y en /en/).
+    // Con i18n, cada URL del sitemap lleva su versión en el otro idioma (hreflang).
+    sitemap({
+      filter: (pagina) => !/\/(en\/)?(favoritos|cuenta|sin-conexion)\/?$/.test(pagina),
+      i18n: { defaultLocale: 'es', locales: { es: 'es-CR', en: 'en-US' } },
+    }),
   ],
 });

@@ -3,15 +3,37 @@
 // En el Figma la fila mide 1624 px de ancho (más que el frame de 1440) y se recorta a los lados:
 // aquí la fila mide 1624/1440 del ancho y se corre a la izquierda 95/1440.
 import { Image } from 'astro:assets';
-import { rutas } from '../../../data/rutas';
+import type { Idioma } from '../../../i18n/idiomas';
+import { rutasPara } from '../../../data/rutas';
 import imgEditorial from '../../../assets/sira/editorial-estampado.png';
 import imgVino from '../../../assets/sira/chaqueta-vino-dorado.png';
 import imgDurazno from '../../../assets/sira/chaqueta-durazno.png';
 
+const { lang = 'es' } = Astro.props as { lang?: Idioma };
+const rutas = rutasPara(lang);
+const t = {
+  es: {
+    alts: [
+      'SIRA Conscious Apparel: editorial con estampado',
+      'SIRA: chaqueta reversible vino con fondo dorado',
+      'SIRA: chaqueta bordada durazno',
+    ],
+    descubrir: 'Descubrir SIRA',
+  },
+  en: {
+    alts: [
+      'SIRA Conscious Apparel: printed editorial look',
+      'SIRA: wine reversible jacket against a gold backdrop',
+      'SIRA: embroidered peach jacket',
+    ],
+    descubrir: 'Discover SIRA',
+  },
+}[lang];
+
 const fotos = [
-  { src: imgEditorial, alt: 'SIRA Conscious Apparel: editorial con estampado' },
-  { src: imgVino, alt: 'SIRA: chaqueta reversible vino con fondo dorado' },
-  { src: imgDurazno, alt: 'SIRA: chaqueta bordada durazno' },
+  { src: imgEditorial, alt: t.alts[0] },
+  { src: imgVino, alt: t.alts[1] },
+  { src: imgDurazno, alt: t.alts[2] },
 ];
 ---
 <section class="hero" aria-labelledby="hero-titulo">
@@ -34,7 +56,7 @@ const fotos = [
   <div class="texto">
     <h1 id="hero-titulo" class="marca serif">SIRA</h1>
     <p class="lema serif">Reversible by nature. Expressive by design.</p>
-    <a class="descubrir" href={rutas.reversibles}>Descubrir SIRA <span aria-hidden="true">→</span></a>
+    <a class="descubrir" href={rutas.reversibles}>{t.descubrir} <span aria-hidden="true">→</span></a>
   </div>
 </section>
 

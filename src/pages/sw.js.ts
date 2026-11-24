@@ -14,6 +14,9 @@ import { tienda } from '../../tienda.config';
 function serviceWorker(CACHE: string, PREFIJO: string, BASE: string) {
   const sw = self as unknown as ServiceWorkerGlobalScope;
   const SIN_CONEXION = BASE + '/sin-conexion/';
+  const SIN_CONEXION_EN = BASE + '/en/sin-conexion/';
+  // Página «sin conexión» en el idioma de la página que se pidió.
+  const sinConexion = (u: URL) => (u.pathname.startsWith(BASE + '/en/') ? SIN_CONEXION_EN : SIN_CONEXION);
   // Cuánto se espera al servidor antes de mostrar la copia guardada de una página.
   const ESPERA_MS = 1000;
 
@@ -21,7 +24,7 @@ function serviceWorker(CACHE: string, PREFIJO: string, BASE: string) {
     e.waitUntil(
       caches
         .open(CACHE)
-        .then((c) => c.addAll([SIN_CONEXION, BASE + '/']))
+        .then((c) => c.addAll([SIN_CONEXION, SIN_CONEXION_EN, BASE + '/']))
         .then(() => sw.skipWaiting()),
     );
   });
@@ -66,7 +69,7 @@ function serviceWorker(CACHE: string, PREFIJO: string, BASE: string) {
       e.respondWith(
         Promise.race([red, esperar.then((r) => r || red)]).catch(() =>
           copia()
-            .then((r) => r || caches.match(SIN_CONEXION))
+            .then((r) => r || caches.match(sinConexion(u)))
             .then((r) => r || Response.error()),
         ),
       );

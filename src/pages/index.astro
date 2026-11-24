@@ -12,13 +12,32 @@ import Historias from '../components/sira/inicio/Historias.astro';
 import Comunidad from '../components/sira/inicio/Comunidad.astro';
 import { getProductos } from '../data/tienda';
 import { tienda } from '../../tienda.config';
+import type { Idioma } from '../i18n/idiomas';
+import { locale } from '../i18n/idiomas';
+
+const { lang = 'es' } = Astro.props as { lang?: Idioma };
+const t = {
+  es: {
+    titulo: tienda.seo.tituloInicio || tienda.marca.nombre,
+    descripcion:
+      'SIRA Conscious Apparel: piezas únicas y prendas reversibles diseñadas con intención desde Costa Rica.',
+    manifiestoAria: 'Manifiesto de marca',
+    manifiesto: ['Diseño que se transforma contigo.', 'Piezas únicas, pensadas para permanecer.'],
+  },
+  en: {
+    titulo: 'SIRA · Unique pieces and reversible apparel · Costa Rica',
+    descripcion:
+      'SIRA Conscious Apparel: unique pieces and reversible garments, designed with intention in Costa Rica.',
+    manifiestoAria: 'Brand manifesto',
+    manifiesto: ['Design that transforms with you.', 'Unique pieces, made to last.'],
+  },
+}[lang];
 
 const productos = await getProductos();
 
 // Datos estructurados de la portada: la tienda y el sitio.
 const sitio = new URL(import.meta.env.BASE_URL, Astro.site ?? Astro.url).href;
-const descripcion =
-  'SIRA Conscious Apparel: piezas únicas y prendas reversibles diseñadas con intención desde Costa Rica.';
+const descripcion = t.descripcion;
 const jsonLd = {
   '@context': 'https://schema.org',
   '@graph': [
@@ -32,28 +51,29 @@ const jsonLd = {
       areaServed: 'CR',
       sameAs: tienda.seo.redes.length ? tienda.seo.redes : undefined,
     },
-    { '@type': 'WebSite', name: tienda.marca.nombre, url: sitio, inLanguage: tienda.pais.locale },
+    { '@type': 'WebSite', name: tienda.marca.nombre, url: sitio, inLanguage: lang === 'es' ? tienda.pais.locale : locale.en },
   ],
 };
 ---
 <PaginaSira
-  title={tienda.seo.tituloInicio || tienda.marca.nombre}
+  lang={lang}
+  title={t.titulo}
   description={descripcion}
   imagen={productos.find((p) => p.imagen)?.imagen?.src}
   jsonLd={jsonLd}
 >
-  <Hero />
+  <Hero lang={lang} />
 
-  <section class="manifiesto" aria-label="Manifiesto de marca">
-    <p class="serif">Diseño que se transforma contigo.<br />Piezas únicas, pensadas para permanecer.</p>
+  <section class="manifiesto" aria-label={t.manifiestoAria}>
+    <p class="serif">{t.manifiesto[0]}<br />{t.manifiesto[1]}</p>
   </section>
 
-  <Coleccion />
-  <Reversible />
-  <NuevasPiezas productos={productos} />
-  <Historia />
-  <Historias />
-  <Comunidad />
+  <Coleccion lang={lang} />
+  <Reversible lang={lang} />
+  <NuevasPiezas productos={productos} lang={lang} />
+  <Historia lang={lang} />
+  <Historias lang={lang} />
+  <Comunidad lang={lang} />
 </PaginaSira>
 
 <style>

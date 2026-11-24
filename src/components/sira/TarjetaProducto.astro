@@ -9,7 +9,8 @@
 import { Image } from 'astro:assets';
 import type { Producto } from '../../data/tienda';
 import { claveFavorito } from '../../data/tienda';
-import { rutas } from '../../data/rutas';
+import { rutasPara } from '../../data/rutas';
+import type { Idioma } from '../../i18n/idiomas';
 
 interface Props {
   producto: Producto;
@@ -18,8 +19,15 @@ interface Props {
   prioridad?: boolean;
   /** Ancho de la tarjeta en escritorio (px), para descargar la foto del tamaño justo. */
   ancho?: number;
+  lang?: Idioma;
 }
 const { producto: p, variante = 'lista', prioridad = false } = Astro.props;
+const lang: Idioma = Astro.props.lang ?? 'es';
+const rutas = rutasPara(lang);
+const t = {
+  es: { guardar: `Guardar ${p.nombre} en favoritos`, verCara: 'Ver cara de la prenda', caraA: 'Cara A', caraB: 'Cara B', reversible: 'Reversible', agotado: 'Agotado' },
+  en: { guardar: `Save ${p.nombre} to wishlist`, verCara: 'See garment side', caraA: 'Side A', caraB: 'Side B', reversible: 'Reversible', agotado: 'Sold out' },
+}[lang];
 const caras = p.reversible && p.imagenes.length >= 2;
 const fotos = caras ? p.imagenes.slice(0, 2) : p.imagenes.slice(0, 1);
 const ancho = Astro.props.ancho ?? (variante === 'inicio' ? 302 : 400);
@@ -54,20 +62,20 @@ const ancho = Astro.props.ancho ?? (variante === 'inicio' ? 302 : 400);
         <span class="sin-foto">{p.nombre}</span>
       )}
     </a>
-    <button class="favorito" type="button" data-favorito aria-pressed="false" aria-label={`Guardar ${p.nombre} en favoritos`}>
+    <button class="favorito" type="button" data-favorito aria-pressed="false" aria-label={t.guardar}>
       <svg viewBox="0 0 14 14" aria-hidden="true"><path d="M1.17 5.54c0-.65.2-1.28.56-1.82a3.21 3.21 0 0 1 4.44-.81c.32.22.6.5.83.83a3.21 3.21 0 0 1 5.83 1.8c0 1.34-.88 2.35-1.75 3.22L7.88 11.9a1.17 1.17 0 0 1-1.66.06L3 8.76c-.88-.87-1.83-1.87-1.83-3.22z" /></svg>
     </button>
     {caras && variante === 'lista' && (
-      <div class="caras" role="group" aria-label="Ver cara de la prenda">
-        <button type="button" class="cara activa" data-ver-cara="a" aria-pressed="true">Cara A</button>
+      <div class="caras" role="group" aria-label={t.verCara}>
+        <button type="button" class="cara activa" data-ver-cara="a" aria-pressed="true">{t.caraA}</button>
         <span aria-hidden="true">/</span>
-        <button type="button" class="cara" data-ver-cara="b" aria-pressed="false">Cara B</button>
+        <button type="button" class="cara" data-ver-cara="b" aria-pressed="false">{t.caraB}</button>
       </div>
     )}
   </div>
   {variante === 'inicio' ? (
     <div class="datos">
-      {p.reversible && <p class="etiqueta-rev">Reversible</p>}
+      {p.reversible && <p class="etiqueta-rev">{t.reversible}</p>}
       <h3 class="nombre serif"><a href={rutas.producto(p.slug)}>{p.nombre}</a></h3>
       <p class="precio">{p.precio}</p>
     </div>
@@ -79,9 +87,9 @@ const ancho = Astro.props.ancho ?? (variante === 'inicio' ? 302 : 400);
           {p.precio}
           {p.precioAntes && <s>{p.precioAntes}</s>}
         </p>
-        {p.reversible && <p class="etiqueta-rev">Reversible</p>}
+        {p.reversible && <p class="etiqueta-rev">{t.reversible}</p>}
       </div>
-      {!p.enStock && <p class="agotado">Agotado</p>}
+      {!p.enStock && <p class="agotado">{t.agotado}</p>}
     </div>
   )}
 </article>

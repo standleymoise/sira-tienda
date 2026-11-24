@@ -3,45 +3,63 @@
 // Escritorio: idioma · logo · íconos, menú centrado y desplegable editorial con fondo oscurecido.
 // Móvil: menú lateral con los mismos enlaces.
 import { Image } from 'astro:assets';
-import { menu, type IdMenu } from '../../data/sira';
-import { rutas, url } from '../../data/rutas';
+import { menuPara, type IdMenu } from '../../data/sira';
+import { type Idioma, rutaEn } from '../../i18n/idiomas';
+import { rutasPara, url } from '../../data/rutas';
 import { storeApiUrl } from '../../data/tienda';
 
 interface Props {
   /** Sección activa del menú (se marca en dorado). */
   activo?: IdMenu;
+  lang?: Idioma;
 }
-const { activo } = Astro.props;
+const { activo, lang = 'es' } = Astro.props;
+const menu = menuPara(lang);
+const rutas = rutasPara(lang);
+const t = {
+  es: {
+    abrirMenu: 'Abrir menú', idioma: 'Idioma', inicio: 'SIRA, inicio', buscar: 'Buscar', cuenta: 'Mi cuenta',
+    favoritos: 'Favoritos', carrito: 'Carrito', principal: 'Principal', cerrar: 'Cerrar ×',
+    buscarPiezas: 'Buscar piezas', ir: 'Buscar ↗', otro: 'English version',
+  },
+  en: {
+    abrirMenu: 'Open menu', idioma: 'Language', inicio: 'SIRA, home', buscar: 'Search', cuenta: 'My account',
+    favoritos: 'Wishlist', carrito: 'Cart', principal: 'Main', cerrar: 'Close ×',
+    buscarPiezas: 'Search pieces', ir: 'Search ↗', otro: 'Versión en español',
+  },
+}[lang];
+const enlaceEs = rutaEn(Astro.url, 'es');
+const enlaceEn = rutaEn(Astro.url, 'en');
 ---
 <header class="encabezado" data-encabezado data-api={storeApiUrl}>
   <div class="fila-superior">
-    <button class="btn-menu-movil" type="button" data-abrir-menu aria-label="Abrir menú" aria-expanded="false" aria-controls="menu-movil">
+    <button class="btn-menu-movil" type="button" data-abrir-menu aria-label={t.abrirMenu} aria-expanded="false" aria-controls="menu-movil">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h18M3 12h18M3 17h18" /></svg>
     </button>
-    <p class="idioma" aria-label="Idioma: español">
-      <span class="activo">ES</span><span class="sep" aria-hidden="true">|</span><span class="otro" title="Versión en inglés: próximamente">EN</span>
+    <p class="idioma" aria-label={t.idioma}>
+      <a class:list={{ activo: lang === 'es' }} href={enlaceEs} hreflang="es" lang="es" aria-current={lang === 'es' ? 'true' : undefined} title="Español">ES</a><span class="sep" aria-hidden="true">|</span><a class:list={{ activo: lang === 'en' }} href={enlaceEn} hreflang="en" lang="en" aria-current={lang === 'en' ? 'true' : undefined} title="English">EN</a>
     </p>
-    <a class="logo" href={rutas.inicio} aria-label="SIRA, inicio">
+    <a class="logo" href={rutas.inicio} aria-label={t.inicio}>
       <img src={url('/img/logo-sira.png')} alt="SIRA" width="109" height="60" />
     </a>
     <div class="iconos">
-      <button class="icono" type="button" data-abrir-busqueda aria-label="Buscar" aria-expanded="false" aria-controls="busqueda">
+      <button class="icono" type="button" data-abrir-busqueda aria-label={t.buscar} aria-expanded="false" aria-controls="busqueda">
         <img src={url('/img/icono-buscar.svg')} alt="" width="19" height="19" />
       </button>
-      <a class="icono solo-escritorio" href={rutas.cuenta} aria-label="Mi cuenta">
+      <a class="icono solo-escritorio" href={rutas.cuenta} aria-label={t.cuenta}>
         <img src={url('/img/icono-cuenta.svg')} alt="" width="19" height="19" />
       </a>
-      <a class="icono solo-escritorio" href={rutas.favoritos} aria-label="Favoritos">
+      <a class="icono solo-escritorio" href={rutas.favoritos} aria-label={t.favoritos}>
         <img src={url('/img/icono-favoritos.svg')} alt="" width="19" height="19" />
       </a>
-      <a class="icono carrito" href={rutas.carrito} aria-label="Carrito">
+      <a class="icono carrito" href={rutas.carrito} aria-label={t.carrito}>
         <img src={url('/img/icono-carrito.svg')} alt="" width="19" height="19" />
         <span class="contador" data-contador-carrito aria-live="polite">0</span>
       </a>
     </div>
   </div>
 
-  <nav class="navegacion" aria-label="Principal">
+  <nav class="navegacion" aria-label={t.principal}>
     <ul>
       {menu.map((m) => (
         <li class:list={['item', { 'con-panel': 'panel' in m }]} data-item={m.id}>
@@ -66,7 +84,7 @@ const { activo } = Astro.props;
     'panel' in m ? (
       <div class="panel" data-panel={m.id} hidden>
         <div class="panel-cuerpo">
-          <button class="cerrar" type="button" data-cerrar-panel>Cerrar ×</button>
+          <button class="cerrar" type="button" data-cerrar-panel>{t.cerrar}</button>
           <div class="panel-titulo">
             <p class="indice">{m.panel.indice}</p>
             <p class="titulo serif">{m.panel.titulo}</p>
@@ -92,10 +110,10 @@ const { activo } = Astro.props;
   {/* Búsqueda: lleva a la tienda filtrada (?q=) */}
   <div class="busqueda" id="busqueda" data-busqueda hidden>
     <form class="busqueda-form" action={rutas.productos} method="get" role="search">
-      <label class="sr-only" for="busqueda-q">Buscar piezas</label>
-      <input id="busqueda-q" name="q" type="search" placeholder="Buscar piezas" autocomplete="off" />
-      <button type="submit" class="busqueda-ir">Buscar ↗</button>
-      <button type="button" class="cerrar" data-cerrar-busqueda>Cerrar ×</button>
+      <label class="sr-only" for="busqueda-q">{t.buscarPiezas}</label>
+      <input id="busqueda-q" name="q" type="search" placeholder={t.buscarPiezas} autocomplete="off" />
+      <button type="submit" class="busqueda-ir">{t.ir}</button>
+      <button type="button" class="cerrar" data-cerrar-busqueda>{t.cerrar}</button>
     </form>
   </div>
 
@@ -103,7 +121,7 @@ const { activo } = Astro.props;
   <div class="menu-movil" id="menu-movil" data-menu-movil hidden>
     <div class="menu-movil-cabecera">
       <img src={url('/img/logo-sira.png')} alt="SIRA" width="80" height="44" />
-      <button class="cerrar" type="button" data-cerrar-menu>Cerrar ×</button>
+      <button class="cerrar" type="button" data-cerrar-menu>{t.cerrar}</button>
     </div>
     <ul class="menu-movil-lista">
       {menu.map((m) => (
@@ -120,9 +138,10 @@ const { activo } = Astro.props;
       ))}
     </ul>
     <ul class="menu-movil-cuenta">
-      <li><a href={rutas.cuenta}>Mi cuenta</a></li>
-      <li><a href={rutas.favoritos}>Favoritos</a></li>
-      <li><a href={rutas.carrito}>Carrito</a></li>
+      <li><a href={rutas.cuenta}>{t.cuenta}</a></li>
+      <li><a href={rutas.favoritos}>{t.favoritos}</a></li>
+      <li><a href={rutas.carrito}>{t.carrito}</a></li>
+      <li><a href={lang === 'es' ? enlaceEn : enlaceEs} hreflang={lang === 'es' ? 'en' : 'es'}>{t.otro}</a></li>
     </ul>
   </div>
 </header>
@@ -250,15 +269,22 @@ const { activo } = Astro.props;
     line-height: 1.6;
     color: var(--tinta);
   }
-  .idioma .activo {
-    font-weight: 500;
+  .idioma a {
+    color: var(--gris-claro);
+    text-decoration: none;
+  }
+  .idioma a:first-child {
     width: 34px;
+  }
+  .idioma a:hover,
+  .idioma a.activo {
+    color: var(--tinta);
+  }
+  .idioma a.activo {
+    font-weight: 500;
   }
   .idioma .sep {
     width: 17px;
-  }
-  .idioma .otro {
-    color: var(--gris-claro);
   }
   .logo {
     grid-column: 2;

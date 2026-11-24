@@ -16,8 +16,30 @@ interface Props {
   color: string;
   /** Clave de localStorage para recordar que se cerró el aviso. */
   clave: string;
+  /** Idioma de los textos (por defecto español). */
+  lang?: 'es' | 'en';
 }
-const { nombre, icono, color, clave } = Astro.props;
+const { nombre, icono, color, clave, lang = 'es' } = Astro.props;
+const t = {
+  es: {
+    aria: `Instalar la app de ${nombre}`,
+    titulo: `Instale la app de ${nombre}`,
+    detalle: 'Ábrala desde su pantalla de inicio, más rápido y sin conexión.',
+    instalar: 'Instalar',
+    como: 'Cómo',
+    cerrar: 'Cerrar',
+    ios: 'Toque <b>Compartir</b> {icono} y luego <b>«Agregar a inicio»</b>.',
+  },
+  en: {
+    aria: `Install the ${nombre} app`,
+    titulo: `Install the ${nombre} app`,
+    detalle: 'Open it from your home screen: faster, and it works offline.',
+    instalar: 'Install',
+    como: 'How',
+    cerrar: 'Close',
+    ios: 'Tap <b>Share</b> {icono} and then <b>“Add to Home Screen”</b>.',
+  },
+}[lang];
 ---
 <div
   class="instalar-app"
@@ -26,15 +48,17 @@ const { nombre, icono, color, clave } = Astro.props;
   hidden
   style={`--ia-color:${color}`}
   role="dialog"
-  aria-label={`Instalar la app de ${nombre}`}
+  aria-label={t.aria}
+  data-como={t.como}
+  data-ios={t.ios}
 >
   <img src={icono} alt="" width="44" height="44" />
   <div class="ia-texto">
-    <strong>Instale la app de {nombre}</strong>
-    <span data-ia-detalle>Ábrala desde su pantalla de inicio, más rápido y sin conexión.</span>
+    <strong>{t.titulo}</strong>
+    <span data-ia-detalle>{t.detalle}</span>
   </div>
-  <button type="button" class="ia-instalar" data-instalar-app>Instalar</button>
-  <button type="button" class="ia-cerrar" data-ia-cerrar aria-label="Cerrar">
+  <button type="button" class="ia-instalar" data-instalar-app>{t.instalar}</button>
+  <button type="button" class="ia-cerrar" data-ia-cerrar aria-label={t.cerrar}>
     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
   </button>
 </div>
@@ -77,7 +101,7 @@ const { nombre, icono, color, clave } = Astro.props;
 
   if (!instalada) {
     if (ios) {
-      banner.querySelector<HTMLElement>('.ia-instalar')!.textContent = 'Cómo';
+      banner.querySelector<HTMLElement>('.ia-instalar')!.textContent = banner.dataset.como!;
       ofrecer();
     }
     addEventListener('beforeinstallprompt', (e) => {
@@ -100,8 +124,10 @@ const { nombre, icono, color, clave } = Astro.props;
     } else if (ios) {
       banner.hidden = false;
       banner.classList.add('ios');
-      detalle.innerHTML =
-        'Toque <b>Compartir</b> <svg class="ia-compartir" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M8 7l4-4 4 4M5 11v9h14v-9"/></svg> y luego <b>«Agregar a inicio»</b>.';
+      detalle.innerHTML = banner.dataset.ios!.replace(
+        '{icono}',
+        '<svg class="ia-compartir" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M8 7l4-4 4 4M5 11v9h14v-9"/></svg>',
+      );
     }
   });
 

@@ -13,8 +13,12 @@
 // texto de «Tienda City Mall» del Figma (no son de SIRA).
 import PaginaSira from '../layouts/PaginaSira.astro';
 import { getProductos, storeApiUrl } from '../data/tienda';
-import { rutas, url } from '../data/rutas';
+import { rutasPara, url } from '../data/rutas';
+import type { Idioma } from '../i18n/idiomas';
 import { tienda } from '../../tienda.config';
+
+const { lang = 'es' } = Astro.props as { lang?: Idioma };
+const rutas = rutasPara(lang);
 
 // id de producto o de variación → ficha en este sitio (los enlaces del carrito van a WordPress).
 const enlaces: Record<number, string> = {};
@@ -35,12 +39,214 @@ const CODIGOS_WC: Record<string, string> = {
   'CR-L': 'LM',
 };
 const provincias = tienda.pais.regiones.map(([codigo, nombre]) => [CODIGOS_WC[codigo] ?? codigo, nombre, codigo]);
+// El valor de cada tipo de identificación queda en español (va a la nota del pedido, que lee la
+// tienda); solo cambia el texto que ve el cliente.
 const tiposId = ['Cédula física', 'Cédula jurídica', 'DIMEX', 'Pasaporte'];
 const postal = tienda.pais.codigoPostal;
+
+const t = {
+  es: {
+    meta: 'Carrito',
+    descripcion: 'Su carrito de compras y el pago del pedido.',
+    titulo: 'Artículos en el Carrito',
+    cargando: 'Cargando su carrito…',
+    vacioTitulo: 'Su carrito está vacío',
+    vacioTexto: 'Descubra las piezas únicas y prendas reversibles de SIRA.',
+    verTienda: 'Ver la tienda',
+    gracias: 'Gracias',
+    seguir: 'Seguir comprando',
+    articulos: 'Artículos en su carrito',
+    producto: 'Producto',
+    precio: 'Precio',
+    cantidad: 'Cantidad',
+    quitar: 'Quitar',
+    detallesCompra: 'Detalles de la compra',
+    subtotal: 'Subtotal',
+    envio: 'Envío',
+    descuento: 'Descuento',
+    impuestos: 'Impuestos',
+    total: 'Total:',
+    proceder: 'Proceder al pago',
+    facturacion: 'Detalles de facturación y envío',
+    tipoId: 'Tipo de Identificación*',
+    tiposId: tiposId,
+    numeroId: 'Número de Cédula / Identificación*',
+    nombre: 'Nombre*',
+    nombreAyuda: 'Digite su nombre aquí',
+    apellidos: 'Apellidos*',
+    apellidosAyuda: 'Digite sus apellidos aquí',
+    correo: 'Correo*',
+    correoAyuda: 'correo@mail.com',
+    telefono: 'Teléfono*',
+    pais: 'País*',
+    region: tienda.pais.etiquetaRegion,
+    elijaRegion: 'Elija su provincia',
+    ciudad: tienda.pais.etiquetaCiudad,
+    distrito: 'Distrito*',
+    postal: 'Código postal',
+    postalAyuda: postal.ayuda,
+    direccion: 'Dirección*',
+    direccionAyuda: 'Digite su dirección aquí',
+    sumatoria: 'Sumatoria de pedido',
+    cupon: 'Cupón',
+    cuponPregunta: '¿Tienes un cupón?',
+    cuponAbrir: 'Haz click aquí para agregar el cupón',
+    cuponCodigo: 'Código del cupón',
+    aplicar: 'Aplicar',
+    formaPago: 'Forma de pago',
+    realizar: 'REALIZAR PAGO',
+  },
+  en: {
+    meta: 'Cart',
+    descripcion: 'Your shopping cart and checkout.',
+    titulo: 'Your Cart',
+    cargando: 'Loading your cart…',
+    vacioTitulo: 'Your cart is empty',
+    vacioTexto: 'Discover SIRA’s unique pieces and reversible garments.',
+    verTienda: 'Visit the shop',
+    gracias: 'Thank you',
+    seguir: 'Continue shopping',
+    articulos: 'Items in your cart',
+    producto: 'Product',
+    precio: 'Price',
+    cantidad: 'Quantity',
+    quitar: 'Remove',
+    detallesCompra: 'Cart totals',
+    subtotal: 'Subtotal',
+    envio: 'Shipping',
+    descuento: 'Discount',
+    impuestos: 'Taxes',
+    total: 'Total:',
+    proceder: 'Proceed to checkout',
+    facturacion: 'Billing & shipping details',
+    tipoId: 'ID type*',
+    tiposId: ['National ID (Costa Rica)', 'Corporate ID (Costa Rica)', 'DIMEX (resident ID)', 'Passport'],
+    numeroId: 'ID number*',
+    nombre: 'First name*',
+    nombreAyuda: 'Enter your first name',
+    apellidos: 'Last name*',
+    apellidosAyuda: 'Enter your last name',
+    correo: 'Email*',
+    correoAyuda: 'name@mail.com',
+    telefono: 'Phone*',
+    pais: 'Country*',
+    region: 'Province',
+    elijaRegion: 'Select your province',
+    ciudad: 'Canton',
+    distrito: 'District*',
+    postal: 'Postal code',
+    postalAyuda: postal.ayuda ? '5 digits' : '',
+    direccion: 'Address*',
+    direccionAyuda: 'Street address and directions',
+    sumatoria: 'Your order',
+    cupon: 'Coupon',
+    cuponPregunta: 'Have a coupon?',
+    cuponAbrir: 'Click here to enter your code',
+    cuponCodigo: 'Coupon code',
+    aplicar: 'Apply',
+    formaPago: 'Payment method',
+    realizar: 'PLACE ORDER',
+  },
+}[lang];
+
+// Textos del script del navegador. {n}, {c}, {m}, {email}, {tel}: datos que se ponen al pintar.
+// pagos: nombres de los métodos de pago (en español se usan los de tienda.config).
+const tScript = {
+  es: {
+    lang,
+    titulo: t.titulo,
+    pedidoRecibido: 'Pedido recibido',
+    pagos: {} as Record<string, string>,
+    notas: {
+      cod: 'Paga al recibir su pedido.',
+      bacs: 'Al confirmar, le enviamos por correo los datos para hacer la transferencia.',
+    } as Record<string, string>,
+    notaPasarela: 'Se le llevará a la página segura de pago.',
+    precio: 'Precio',
+    cantidadDe: 'Cantidad de {n}',
+    quitarUna: 'Quitar una unidad de {n}',
+    agregarUna: 'Agregar una unidad de {n}',
+    quitarDel: 'Quitar {n} del carrito',
+    noAplica: 'No aplica',
+    gratis: 'Gratis',
+    segunDireccion: 'Según su dirección',
+    incluidos: '(incluidos)',
+    sinTarifas: 'Complete su provincia, cantón y código postal para ver las opciones de envío.',
+    cuponLinea: 'Cupón «{c}»: −{m}',
+    quitar: 'Quitar',
+    quitarCupon: 'Quitar el cupón {c}',
+    sinPagos: 'No hay formas de pago disponibles en este momento.',
+    errorActualizar: 'No se pudo actualizar el carrito. Intente de nuevo.',
+    aplicando: 'Aplicando…',
+    cuponAplicado: 'Cupón aplicado.',
+    cuponError: 'No se pudo aplicar el cupón.',
+    revise: 'Revise los campos marcados: todos son obligatorios',
+    postalAyuda: postal.ayuda ? ` (código postal: ${postal.ayuda})` : '',
+    enviando: 'Enviando…',
+    abriendo: 'Abriendo el pago seguro…',
+    graciasPedido: 'Gracias, pedido #{n}',
+    textoBacs: 'Su pedido quedó registrado. Le enviamos a {email} los datos para hacer la transferencia.',
+    textoPedido: 'Su pedido quedó registrado. Le confirmaremos la entrega a {email} o al {tel}.',
+    errorPedido: 'No se pudo enviar el pedido. Intente de nuevo.',
+    realizar: t.realizar,
+    pagoNoCompletado: 'El pago del pedido #{n} no se completó',
+    pagoAprobado: 'Su pago con tarjeta fue aprobado. Le enviamos la confirmación por correo.',
+    pagoNoConfirmado: 'Afinia no confirmó el pago. Puede intentarlo de nuevo desde su carrito o escribirnos y le ayudamos.',
+    errorCargar: 'No se pudo cargar el carrito: ',
+  },
+  en: {
+    lang,
+    titulo: t.titulo,
+    pedidoRecibido: 'Order received',
+    pagos: {
+      afinia_gateway: 'Credit or debit card',
+      cod: 'Cash on delivery',
+      bacs: 'Bank transfer',
+      cheque: 'Check',
+    } as Record<string, string>,
+    notas: {
+      cod: 'Pay when your order arrives.',
+      bacs: 'Once you place your order, we’ll email you the bank transfer details.',
+    } as Record<string, string>,
+    notaPasarela: 'You’ll be taken to a secure payment page.',
+    precio: 'Price',
+    cantidadDe: 'Quantity of {n}',
+    quitarUna: 'Remove one {n}',
+    agregarUna: 'Add one more {n}',
+    quitarDel: 'Remove {n} from cart',
+    noAplica: 'Not applicable',
+    gratis: 'Free',
+    segunDireccion: 'Calculated from your address',
+    incluidos: '(included)',
+    sinTarifas: 'Enter your province, canton and postal code to see shipping options.',
+    cuponLinea: 'Coupon “{c}”: −{m}',
+    quitar: 'Remove',
+    quitarCupon: 'Remove coupon {c}',
+    sinPagos: 'No payment methods are available right now.',
+    errorActualizar: 'We couldn’t update your cart. Please try again.',
+    aplicando: 'Applying…',
+    cuponAplicado: 'Coupon applied.',
+    cuponError: 'We couldn’t apply this coupon.',
+    revise: 'Please review the highlighted fields: all are required',
+    postalAyuda: postal.ayuda ? ' (postal code: 5 digits)' : '',
+    enviando: 'Sending…',
+    abriendo: 'Opening secure payment…',
+    graciasPedido: 'Thank you — order #{n}',
+    textoBacs: 'Your order has been placed. We’ve emailed the bank transfer details to {email}.',
+    textoPedido: 'Your order has been placed. We’ll confirm delivery by email at {email} or by phone at {tel}.',
+    errorPedido: 'We couldn’t place your order. Please try again.',
+    realizar: t.realizar,
+    pagoNoCompletado: 'Payment for order #{n} was not completed',
+    pagoAprobado: 'Your card payment was approved. A confirmation is on its way to your inbox.',
+    pagoNoConfirmado: 'Afinia did not confirm the payment. You can try again from your cart, or write to us and we’ll help.',
+    errorCargar: 'We couldn’t load your cart: ',
+  },
+}[lang];
 ---
 <PaginaSira
-  title={`Carrito | ${tienda.marca.nombre}`}
-  description="Su carrito de compras y el pago del pedido."
+  lang={lang}
+  title={`${t.meta} | ${tienda.marca.nombre}`}
+  description={t.descripcion}
   noindex
   activo="tienda"
   fondo="blanco"
@@ -52,22 +258,23 @@ const postal = tienda.pais.codigoPostal;
     data-enlaces={JSON.stringify(enlaces)}
     data-provincias={JSON.stringify(provincias.map(([wc, , iso]) => [iso, wc]))}
     data-basurero={url('/img/icono-basurero.svg')}
+    data-textos={JSON.stringify(tScript)}
     style={`--flecha: url(${url('/img/icono-flecha-abajo.svg')})`}
   >
-    <h1 class="titulo serif" data-titulo>Artículos en el Carrito</h1>
+    <h1 class="titulo serif" data-titulo>{t.titulo}</h1>
 
-    <p class="cargando" data-cargando role="status">Cargando su carrito…</p>
+    <p class="cargando" data-cargando role="status">{t.cargando}</p>
 
     <div class="mensaje" data-vacio hidden>
-      <p class="mensaje-titulo serif">Su carrito está vacío</p>
-      <p>Descubra las piezas únicas y prendas reversibles de SIRA.</p>
-      <a class="boton-oro" href={rutas.productos}>Ver la tienda</a>
+      <p class="mensaje-titulo serif">{t.vacioTitulo}</p>
+      <p>{t.vacioTexto}</p>
+      <a class="boton-oro" href={rutas.productos}>{t.verTienda}</a>
     </div>
 
     <div class="mensaje" data-gracias hidden tabindex="-1">
-      <p class="mensaje-titulo serif" data-gracias-titulo>Gracias</p>
+      <p class="mensaje-titulo serif" data-gracias-titulo>{t.gracias}</p>
       <p data-gracias-texto></p>
-      <a class="boton-oro" href={rutas.productos}>Seguir comprando</a>
+      <a class="boton-oro" href={rutas.productos}>{t.seguir}</a>
     </div>
 
     <p class="error-general" data-error-general role="alert" hidden></p>
@@ -77,13 +284,13 @@ const postal = tienda.pais.codigoPostal;
       <div class="fila fila-carrito">
         <div class="tabla-marco">
           <table class="tabla">
-            <caption class="sr-only">Artículos en su carrito</caption>
+            <caption class="sr-only">{t.articulos}</caption>
             <thead>
               <tr>
-                <th scope="col" class="col-producto">Producto</th>
-                <th scope="col">Precio</th>
-                <th scope="col">Cantidad</th>
-                <th scope="col"><span class="sr-only">Quitar</span></th>
+                <th scope="col" class="col-producto">{t.producto}</th>
+                <th scope="col">{t.precio}</th>
+                <th scope="col">{t.cantidad}</th>
+                <th scope="col"><span class="sr-only">{t.quitar}</span></th>
               </tr>
             </thead>
             <tbody data-items></tbody>
@@ -91,114 +298,114 @@ const postal = tienda.pais.codigoPostal;
         </div>
 
         <aside class="detalles-compra" aria-labelledby="titulo-detalles-compra">
-          <h2 id="titulo-detalles-compra">Detalles de la compra</h2>
+          <h2 id="titulo-detalles-compra">{t.detallesCompra}</h2>
           <dl class="totales">
-            <div><dt>Subtotal</dt><dd data-t-subtotal></dd></div>
-            <div class="normal"><dt>Envío</dt><dd data-t-envio></dd></div>
-            <div data-fila-descuento hidden><dt>Descuento</dt><dd data-t-descuento></dd></div>
-            <div data-fila-impuestos><dt>Impuestos</dt><dd data-t-impuestos></dd></div>
-            <div class="total"><dt>Total:</dt><dd data-t-total></dd></div>
+            <div><dt>{t.subtotal}</dt><dd data-t-subtotal></dd></div>
+            <div class="normal"><dt>{t.envio}</dt><dd data-t-envio></dd></div>
+            <div data-fila-descuento hidden><dt>{t.descuento}</dt><dd data-t-descuento></dd></div>
+            <div data-fila-impuestos><dt>{t.impuestos}</dt><dd data-t-impuestos></dd></div>
+            <div class="total"><dt>{t.total}</dt><dd data-t-total></dd></div>
           </dl>
-          <a class="boton-oro ancho" href="#facturacion" data-ir-pago>Proceder al pago</a>
+          <a class="boton-oro ancho" href="#facturacion" data-ir-pago>{t.proceder}</a>
         </aside>
       </div>
 
       <!-- Fila 2: facturación y envío + sumatoria y pago -->
       <form class="fila fila-pago" id="facturacion" data-form novalidate>
         <div class="campos">
-          <h2>Detalles de facturación y envío</h2>
+          <h2>{t.facturacion}</h2>
 
           <label class="campo">
-            <span>Tipo de Identificación*</span>
+            <span>{t.tipoId}</span>
             <select name="tipo_id" required>
-              {tiposId.map((t) => <option value={t}>{t}</option>)}
+              {tiposId.map((v, i) => <option value={v}>{t.tiposId[i]}</option>)}
             </select>
           </label>
           <label class="campo">
-            <span>Número de Cédula / Identificación*</span>
+            <span>{t.numeroId}</span>
             <input name="numero_id" required minlength="5" placeholder="12345678" autocomplete="off" />
           </label>
           <label class="campo">
-            <span>Nombre*</span>
-            <input name="first_name" required placeholder="Digite su nombre aquí" autocomplete="given-name" />
+            <span>{t.nombre}</span>
+            <input name="first_name" required placeholder={t.nombreAyuda} autocomplete="given-name" />
           </label>
           <label class="campo">
-            <span>Apellidos*</span>
-            <input name="last_name" required placeholder="Digite sus apellidos aquí" autocomplete="family-name" />
+            <span>{t.apellidos}</span>
+            <input name="last_name" required placeholder={t.apellidosAyuda} autocomplete="family-name" />
           </label>
           <label class="campo">
-            <span>Correo*</span>
-            <input name="email" type="email" required placeholder="correo@mail.com" autocomplete="email" />
+            <span>{t.correo}</span>
+            <input name="email" type="email" required placeholder={t.correoAyuda} autocomplete="email" />
           </label>
           <label class="campo">
-            <span>Teléfono*</span>
+            <span>{t.telefono}</span>
             <input name="phone" type="tel" required placeholder="8888 8888" autocomplete="tel" />
           </label>
           <label class="campo">
-            <span>País*</span>
+            <span>{t.pais}</span>
             <select name="country" required>
               <option value={tienda.pais.codigo}>Costa Rica</option>
             </select>
           </label>
           <label class="campo">
-            <span>{tienda.pais.etiquetaRegion}*</span>
+            <span>{t.region}*</span>
             <select name="state" required data-envio>
-              <option value="">Elija su provincia</option>
+              <option value="">{t.elijaRegion}</option>
               {provincias.map(([codigo, nombre]) => <option value={codigo}>{nombre}</option>)}
             </select>
           </label>
           <label class="campo">
-            <span>{tienda.pais.etiquetaCiudad}*</span>
+            <span>{t.ciudad}*</span>
             <input name="city" required placeholder="Curridabat" autocomplete="address-level2" data-envio />
           </label>
           <label class="campo">
-            <span>Distrito*</span>
+            <span>{t.distrito}</span>
             <input name="address_2" required placeholder="Granadilla" autocomplete="address-level3" />
           </label>
           <label class="campo">
-            <span>Código postal{postal.requerido ? '*' : ''}</span>
+            <span>{t.postal}{postal.requerido ? '*' : ''}</span>
             <input
               name="postcode"
               required={postal.requerido}
               pattern={postal.patron || undefined}
               inputmode="numeric"
-              placeholder={postal.ayuda ? `${postal.ayuda}` : ''}
+              placeholder={t.postalAyuda || ''}
               autocomplete="postal-code"
               data-envio
             />
           </label>
           <label class="campo">
-            <span>Dirección*</span>
-            <input name="address_1" required placeholder="Digite su dirección aquí" autocomplete="street-address" />
+            <span>{t.direccion}</span>
+            <input name="address_1" required placeholder={t.direccionAyuda} autocomplete="street-address" />
           </label>
         </div>
 
         <div class="sumatoria">
           <section class="caja caja-pedido" aria-labelledby="titulo-sumatoria">
-            <h2 id="titulo-sumatoria" class="titulo-oro">Sumatoria de pedido</h2>
-            <div class="par cabeza"><span>Producto</span><span>Subtotal</span></div>
+            <h2 id="titulo-sumatoria" class="titulo-oro">{t.sumatoria}</h2>
+            <div class="par cabeza"><span>{t.producto}</span><span>{t.subtotal}</span></div>
             <ul class="lineas" data-lineas></ul>
-            <div class="par fuerte"><span>Subtotal</span><span data-s-subtotal></span></div>
+            <div class="par fuerte"><span>{t.subtotal}</span><span data-s-subtotal></span></div>
             <fieldset class="envio" data-envio-caja>
-              <legend>Envío</legend>
+              <legend>{t.envio}</legend>
               <div class="tarifas" data-tarifas></div>
             </fieldset>
-            <div class="par" data-s-fila-descuento hidden><span>Descuento</span><span data-s-descuento></span></div>
-            <div class="par" data-s-fila-impuestos><span>Impuestos</span><span data-s-impuestos></span></div>
-            <div class="par fuerte total"><span>Total:</span><span data-s-total></span></div>
+            <div class="par" data-s-fila-descuento hidden><span>{t.descuento}</span><span data-s-descuento></span></div>
+            <div class="par" data-s-fila-impuestos><span>{t.impuestos}</span><span data-s-impuestos></span></div>
+            <div class="par fuerte total"><span>{t.total}</span><span data-s-total></span></div>
           </section>
 
-          <section class="caja caja-cupon" aria-label="Cupón">
+          <section class="caja caja-cupon" aria-label={t.cupon}>
             <p class="cupon-pregunta">
-              <span>¿Tienes un cupón?</span>
+              <span>{t.cuponPregunta}</span>
               <button type="button" class="enlace-cupon" data-abrir-cupon aria-expanded="false" aria-controls="cupon-campos">
-                Haz click aquí para agregar el cupón
+                {t.cuponAbrir}
               </button>
             </p>
             <div class="cupon-campos" id="cupon-campos" data-cupon-campos hidden>
-              <label class="sr-only" for="cupon">Código del cupón</label>
-              <input id="cupon" data-cupon placeholder="Código del cupón" autocomplete="off" />
-              <button type="button" class="aplicar" data-aplicar>Aplicar</button>
+              <label class="sr-only" for="cupon">{t.cuponCodigo}</label>
+              <input id="cupon" data-cupon placeholder={t.cuponCodigo} autocomplete="off" />
+              <button type="button" class="aplicar" data-aplicar>{t.aplicar}</button>
             </div>
             <ul class="cupones" data-cupones></ul>
             <p class="cupon-aviso" data-cupon-aviso role="status" aria-live="polite"></p>
@@ -206,14 +413,14 @@ const postal = tienda.pais.codigoPostal;
 
           <section class="caja caja-pago">
             <fieldset class="pagos">
-              <legend>Forma de pago</legend>
+              <legend>{t.formaPago}</legend>
               <div data-metodos></div>
             </fieldset>
             <p class="nota-pago" data-nota-pago></p>
           </section>
 
           <p class="error" data-error role="alert" hidden></p>
-          <button type="submit" class="boton-oro ancho realizar" data-enviar>REALIZAR PAGO</button>
+          <button type="submit" class="boton-oro ancho realizar" data-enviar>{t.realizar}</button>
         </div>
       </form>
     </div>
@@ -263,10 +470,12 @@ const postal = tienda.pais.codigoPostal;
   // Nombre de respaldo para pasarelas que no están en tienda.pagos.
   const NOMBRES_RESPALDO: Record<string, string> = { afinia_gateway: 'Tarjeta de crédito o débito' };
   const nombrePago = (id: string) => tienda.pagos[id] ?? NOMBRES_RESPALDO[id] ?? id;
-  const NOTAS_PAGO: Record<string, string> = {
-    cod: 'Paga al recibir su pedido.',
-    bacs: 'Al confirmar, le enviamos por correo los datos para hacer la transferencia.',
-  };
+
+  // Textos de la página en su idioma (vienen del HTML: data-textos).
+  type Textos = Record<string, string> & { pagos: Record<string, string>; notas: Record<string, string> };
+  /** Pone los datos en un texto: llenar('Pedido #{n}', { n: 12 }) → «Pedido #12». */
+  const llenar = (texto: string, datos: Record<string, string | number>) =>
+    texto.replace(/\{(\w+)\}/g, (_, k) => String(datos[k] ?? ''));
 
   const raiz = document.querySelector<HTMLElement>('[data-compra]');
   if (raiz) iniciar(raiz);
@@ -277,6 +486,7 @@ const postal = tienda.pais.codigoPostal;
     const isoAWc = Object.fromEntries(JSON.parse(raiz.dataset.provincias || '[]')) as Record<string, string>;
     const $ = <T extends HTMLElement = HTMLElement>(sel: string) => raiz.querySelector<T>(sel)!;
     const form = $<HTMLFormElement>('[data-form]');
+    const T: Textos = JSON.parse(raiz.dataset.textos || '{}');
     let carrito: CarritoC | null = null;
     let ocupado = false;
 
@@ -290,7 +500,7 @@ const postal = tienda.pais.codigoPostal;
       $('[data-vacio]').hidden = cual !== 'vacio';
       $('[data-lleno]').hidden = cual !== 'lleno';
       $('[data-gracias]').hidden = cual !== 'gracias';
-      $('[data-titulo]').textContent = cual === 'gracias' ? 'Pedido recibido' : 'Artículos en el Carrito';
+      $('[data-titulo]').textContent = cual === 'gracias' ? T.pedidoRecibido : T.titulo;
     }
     function errorGeneral(texto: string) {
       const e = $('[data-error-general]');
@@ -336,7 +546,7 @@ const postal = tienda.pais.codigoPostal;
               <div class="producto-texto"><a class="producto-nombre"></a><span class="producto-opciones"></span></div>
             </div>
           </td>
-          <td class="col-precio"><span class="etiqueta-movil">Precio</span><span class="valor"></span></td>
+          <td class="col-precio"><span class="etiqueta-movil"></span><span class="valor"></span></td>
           <td class="col-cantidad">
             <div class="cantidad" role="group">
               <button type="button" class="menos">−</button>
@@ -359,15 +569,16 @@ const postal = tienda.pais.codigoPostal;
         a.textContent = nombre;
         if (enlaces[it.id]) a.href = enlaces[it.id];
         tr.querySelector('.producto-opciones')!.textContent = opciones;
+        tr.querySelector('.col-precio .etiqueta-movil')!.textContent = T.precio;
         tr.querySelector('.col-precio .valor')!.textContent = formato(unitario, m);
         tr.querySelector('.numero')!.textContent = String(it.quantity);
-        tr.querySelector('.cantidad')!.setAttribute('aria-label', `Cantidad de ${nombre}`);
+        tr.querySelector('.cantidad')!.setAttribute('aria-label', llenar(T.cantidadDe, { n: nombre }));
         const menos = tr.querySelector<HTMLButtonElement>('.menos')!;
         const mas = tr.querySelector<HTMLButtonElement>('.mas')!;
         const quitar = tr.querySelector<HTMLButtonElement>('.quitar')!;
-        menos.setAttribute('aria-label', `Quitar una unidad de ${nombre}`);
-        mas.setAttribute('aria-label', `Agregar una unidad de ${nombre}`);
-        quitar.setAttribute('aria-label', `Quitar ${nombre} del carrito`);
+        menos.setAttribute('aria-label', llenar(T.quitarUna, { n: nombre }));
+        mas.setAttribute('aria-label', llenar(T.agregarUna, { n: nombre }));
+        quitar.setAttribute('aria-label', llenar(T.quitarDel, { n: nombre }));
         quitar.querySelector('img')!.src = raiz.dataset.basurero!;
         menos.disabled = !editable || it.quantity <= 1;
         mas.disabled = !editable || it.quantity >= max;
@@ -401,15 +612,15 @@ const postal = tienda.pais.codigoPostal;
       const descuento = suma(t.total_discount, t.total_discount_tax);
       const elegida = tarifaElegida(c);
       let envio: string;
-      if (c.needs_shipping === false) envio = 'No aplica';
-      else if (elegida) envio = Number(suma(elegida.price, elegida.taxes)) === 0 ? 'Gratis' : formato(suma(t.total_shipping, t.total_shipping_tax), t);
-      else envio = 'Según su dirección';
+      if (c.needs_shipping === false) envio = T.noAplica;
+      else if (elegida) envio = Number(suma(elegida.price, elegida.taxes)) === 0 ? T.gratis : formato(suma(t.total_shipping, t.total_shipping_tax), t);
+      else envio = T.segunDireccion;
       const conImpuestos = t.total_tax !== undefined;
       const valores: Record<string, string> = {
         subtotal: formato(subtotal, t),
         envio,
         descuento: `−${formato(descuento, t)}`,
-        impuestos: conImpuestos ? `${formato(t.total_tax!, t)} (incluidos)` : '',
+        impuestos: conImpuestos ? `${formato(t.total_tax!, t)} ${T.incluidos}` : '',
         total: formato(t.total_price, t),
       };
       for (const [k, v] of Object.entries(valores)) {
@@ -430,7 +641,7 @@ const postal = tienda.pais.codigoPostal;
       if (!paquetes.length) {
         const p = document.createElement('p');
         p.className = 'sin-tarifas';
-        p.textContent = 'Complete su provincia, cantón y código postal para ver las opciones de envío.';
+        p.textContent = T.sinTarifas;
         cont.append(p);
         return;
       }
@@ -448,7 +659,7 @@ const postal = tienda.pais.codigoPostal;
           );
           const precio = Number(suma(r.price, r.taxes));
           const texto = document.createElement('span');
-          texto.textContent = `${decodificar(r.name)} ${precio === 0 ? '· Gratis' : `· ${formato(String(precio), r)}`}`;
+          texto.textContent = `${decodificar(r.name)} · ${precio === 0 ? T.gratis : formato(String(precio), r)}`;
           label.append(input, texto);
           cont.append(label);
         }
@@ -461,12 +672,15 @@ const postal = tienda.pais.codigoPostal;
       for (const cu of c.coupons ?? []) {
         const li = document.createElement('li');
         const t = document.createElement('span');
-        t.textContent = `Cupón «${cu.code}»: −${formato(suma(cu.totals.total_discount, cu.totals.total_discount_tax), cu.totals)}`;
+        t.textContent = llenar(T.cuponLinea, {
+          c: cu.code,
+          m: formato(suma(cu.totals.total_discount, cu.totals.total_discount_tax), cu.totals),
+        });
         const b = document.createElement('button');
         b.type = 'button';
         b.className = 'quitar-cupon';
-        b.textContent = 'Quitar';
-        b.setAttribute('aria-label', `Quitar el cupón ${cu.code}`);
+        b.textContent = T.quitar;
+        b.setAttribute('aria-label', llenar(T.quitarCupon, { c: cu.code }));
         b.addEventListener('click', () => actualizar(() => cliente.api<CarritoC>('/cart/remove-coupon', { code: cu.code })));
         li.append(t, b);
         lista.append(li);
@@ -478,7 +692,7 @@ const postal = tienda.pais.codigoPostal;
       const antes = form.querySelector<HTMLInputElement>('input[name="payment_method"]:checked')?.value;
       cont.replaceChildren();
       if (!c.payment_methods.length) {
-        cont.textContent = 'No hay formas de pago disponibles en este momento.';
+        cont.textContent = T.sinPagos;
       }
       c.payment_methods.forEach((m, i) => {
         const label = document.createElement('label');
@@ -491,7 +705,7 @@ const postal = tienda.pais.codigoPostal;
         input.checked = antes ? antes === m : i === 0;
         input.addEventListener('change', notaPago);
         const t = document.createElement('span');
-        t.textContent = nombrePago(m);
+        t.textContent = T.pagos?.[m] ?? nombrePago(m);
         label.append(input, t);
         cont.append(label);
       });
@@ -503,8 +717,8 @@ const postal = tienda.pais.codigoPostal;
       $('[data-nota-pago]').textContent = !m
         ? ''
         : FUERA_DE_LINEA.includes(m)
-          ? (NOTAS_PAGO[m] ?? '')
-          : 'Se le llevará a la página segura de pago.';
+          ? (T.notas[m] ?? '')
+          : T.notaPasarela;
     }
 
     // ---------- acciones ----------
@@ -516,7 +730,7 @@ const postal = tienda.pais.codigoPostal;
       try {
         usar(await accion());
       } catch (e) {
-        errorGeneral((e as Error).message || 'No se pudo actualizar el carrito. Intente de nuevo.');
+        errorGeneral((e as Error).message || T.errorActualizar);
         if (carrito) usar(carrito);
       } finally {
         ocupado = false;
@@ -570,14 +784,14 @@ const postal = tienda.pais.codigoPostal;
     async function aplicarCupon() {
       const code = campoCupon.value.trim();
       if (!code || ocupado) return;
-      avisoCupon.textContent = 'Aplicando…';
+      avisoCupon.textContent = T.aplicando;
       ocupado = true;
       try {
         usar(await cliente.api<CarritoC>('/cart/apply-coupon', { code }));
-        avisoCupon.textContent = 'Cupón aplicado.';
+        avisoCupon.textContent = T.cuponAplicado;
         campoCupon.value = '';
       } catch (e) {
-        avisoCupon.textContent = (e as Error).message || 'No se pudo aplicar el cupón.';
+        avisoCupon.textContent = (e as Error).message || T.cuponError;
       } finally {
         ocupado = false;
       }
@@ -603,9 +817,7 @@ const postal = tienda.pais.codigoPostal;
       const error = $('[data-error]');
       const enviar = $<HTMLButtonElement>('[data-enviar]');
       if (!form.checkValidity()) {
-        error.textContent = `Revise los campos marcados: todos son obligatorios${
-          tienda.pais.codigoPostal.ayuda ? ` (código postal: ${tienda.pais.codigoPostal.ayuda})` : ''
-        }.`;
+        error.textContent = `${T.revise}${T.postalAyuda}.`;
         error.hidden = false;
         form.classList.add('validar');
         form.querySelector<HTMLElement>(':invalid')?.focus();
@@ -616,7 +828,7 @@ const postal = tienda.pais.codigoPostal;
       const email = valor('email');
       error.hidden = true;
       enviar.disabled = true;
-      enviar.textContent = 'Enviando…';
+      enviar.textContent = T.enviando;
       try {
         const r = await cliente.api<{ order_id: number; status: string; payment_result?: { redirect_url?: string } }>(
           '/checkout',
@@ -627,13 +839,16 @@ const postal = tienda.pais.codigoPostal;
             payment_data: [],
             // WooCommerce no tiene campos de identificación: van al inicio de la nota del pedido.
             customer_note: `Identificación: ${valor('tipo_id')} ${valor('numero_id')}`,
+            // Pedido hecho desde /en/: el plugin sira-afinia-astro lo guarda en el pedido para que,
+            // al volver de Afinia, el cliente llegue al «Gracias» en inglés (/en/carrito/).
+            ...(T.lang === 'en' ? { sira_idioma: 'en' } : {}),
           },
         );
         // Una pasarela lleva a su página segura de pago (otra página que no es la de «pedido recibido»).
         const destino = r.payment_result?.redirect_url ?? '';
         const esPaginaPropia = !destino || /order-received|pedido-recibido/.test(destino);
         if (!esPaginaPropia) {
-          enviar.textContent = 'Abriendo el pago seguro…';
+          enviar.textContent = T.abriendo;
           // Afinia: directo a su página segura, sin pasar por la página de pago de WordPress.
           // Si algo falla, se usa la página de WordPress (el pago igual se puede completar ahí).
           if (metodo === 'afinia_gateway') await pagarConAfinia(destino).catch(() => (location.href = destino));
@@ -641,24 +856,24 @@ const postal = tienda.pais.codigoPostal;
           return;
         }
         avisarEncabezado(0);
-        $('[data-gracias-titulo]').textContent = `Gracias, pedido #${r.order_id}`;
-        $('[data-gracias-texto]').textContent =
-          metodo === 'bacs'
-            ? `Su pedido quedó registrado. Le enviamos a ${email} los datos para hacer la transferencia.`
-            : `Su pedido quedó registrado. Le confirmaremos la entrega a ${email} o al ${d.phone}.`;
+        $('[data-gracias-titulo]').textContent = llenar(T.graciasPedido, { n: r.order_id });
+        $('[data-gracias-texto]').textContent = llenar(metodo === 'bacs' ? T.textoBacs : T.textoPedido, {
+          email,
+          tel: d.phone,
+        });
         vista('gracias');
         form.reset();
         form.classList.remove('validar');
         $('[data-gracias]').focus();
         scrollTo({ top: 0 });
       } catch (err) {
-        error.textContent = (err as Error).message || 'No se pudo enviar el pedido. Intente de nuevo.';
+        error.textContent = (err as Error).message || T.errorPedido;
         error.hidden = false;
         // El carrito pudo cambiar (stock, precios): se vuelve a leer.
         cliente.api<CarritoC>('/cart').then(usar).catch(() => {});
       } finally {
         enviar.disabled = false;
-        enviar.textContent = 'REALIZAR PAGO';
+        enviar.textContent = T.realizar;
       }
     });
 
@@ -723,10 +938,8 @@ const postal = tienda.pais.codigoPostal;
       const n = regreso.get('pedido');
       const ok = regreso.get('estado') === 'ok';
       avisarEncabezado(0);
-      $('[data-gracias-titulo]').textContent = ok ? `Gracias, pedido #${n}` : `El pago del pedido #${n} no se completó`;
-      $('[data-gracias-texto]').textContent = ok
-        ? 'Su pago con tarjeta fue aprobado. Le enviamos la confirmación por correo.'
-        : 'Afinia no confirmó el pago. Puede intentarlo de nuevo desde su carrito o escribirnos y le ayudamos.';
+      $('[data-gracias-titulo]').textContent = llenar(ok ? T.graciasPedido : T.pagoNoCompletado, { n: n ?? '' });
+      $('[data-gracias-texto]').textContent = ok ? T.pagoAprobado : T.pagoNoConfirmado;
       vista('gracias');
       history.replaceState(null, '', location.pathname);
       return;
@@ -766,7 +979,7 @@ const postal = tienda.pais.codigoPostal;
       })
       .catch((e) => {
         vista('vacio');
-        errorGeneral(`No se pudo cargar el carrito: ${(e as Error).message}`);
+        errorGeneral(`${T.errorCargar}${(e as Error).message}`);
       });
   }
 </script>

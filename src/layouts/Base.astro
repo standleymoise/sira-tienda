@@ -5,6 +5,7 @@ import InstalarApp from '../components/InstalarApp.astro';
 import { tienda } from '../../tienda.config';
 import { url } from '../data/rutas';
 import { tiendaUrl } from '../data/tienda';
+import { type Idioma, locale, rutaEn } from '../i18n/idiomas';
 
 interface Props {
   title: string;
@@ -17,8 +18,18 @@ interface Props {
   tipo?: 'website' | 'product';
   /** Datos estructurados (schema.org) de la página: un objeto o una lista. */
   jsonLd?: object | object[];
+  /** Idioma de la página (por defecto español). */
+  lang?: Idioma;
 }
-const { title, description = tienda.marca.descripcion, noindex = false, imagen, tipo = 'website', jsonLd } = Astro.props;
+const { title, noindex = false, imagen, tipo = 'website', jsonLd, lang = 'es' } = Astro.props;
+// Descripción por defecto de la marca, en el idioma de la página.
+const description =
+  Astro.props.description ??
+  (lang === 'en'
+    ? 'SIRA Conscious Apparel: unique pieces and reversible garments designed with intention in Costa Rica.'
+    : tienda.marca.descripcion);
+// La misma página en español y en inglés (hreflang).
+const alterna = (l: Idioma) => new URL(rutaEn(Astro.url, l), Astro.site ?? Astro.url).href;
 const c = tienda.colores;
 // Vista previa (GitHub Pages): ninguna página se indexa. Se activa con PUBLIC_VISTA_PREVIA=1.
 const vistaPrevia = import.meta.env.PUBLIC_VISTA_PREVIA === '1';
@@ -46,7 +57,7 @@ const imagenOg = imagen || tienda.seo.imagenCompartir;
 const ld = jsonLd ? JSON.stringify(jsonLd).replaceAll('<', '\\u003c') : '';
 ---
 <!doctype html>
-<html lang={tienda.pais.locale.split('-')[0]} style={variables}>
+<html lang={lang} style={variables}>
   <head>
     <script is:inline define:vars={{ hostOficial }}>
       // Quien entra por www. va al dominio oficial: el CORS de la tienda solo acepta ese.
@@ -63,7 +74,10 @@ const ld = jsonLd ? JSON.stringify(jsonLd).replaceAll('<', '\\u003c') : '';
     {(noindex || vistaPrevia) && <meta name="robots" content="noindex" />}
     <meta property="og:type" content={tipo} />
     <meta property="og:site_name" content={tienda.marca.nombre} />
-    <meta property="og:locale" content={tienda.pais.locale.replace('-', '_')} />
+    <meta property="og:locale" content={locale[lang].replace('-', '_')} />
+    <link rel="alternate" hreflang="es" href={alterna('es')} />
+    <link rel="alternate" hreflang="en" href={alterna('en')} />
+    <link rel="alternate" hreflang="x-default" href={alterna('es')} />
     <meta property="og:url" content={canonica} />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
@@ -84,6 +98,7 @@ const ld = jsonLd ? JSON.stringify(jsonLd).replaceAll('<', '\\u003c') : '';
   <body>
     <slot />
     <InstalarApp
+      lang={lang}
       nombre={tienda.app.nombreCorto || tienda.marca.nombre}
       icono={url('/iconos/icono-192.png')}
       color={c.acento}

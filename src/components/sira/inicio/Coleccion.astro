@@ -2,16 +2,42 @@
 // Colección actual (Figma: «Colección Entre Líneas» 147:5110, 1440×960): foto grande 624×780,
 // textos a la derecha, foto de detalle 350×258 abajo a la derecha, pie editorial e índice.
 import { Image } from 'astro:assets';
-import { rutas } from '../../../data/rutas';
+import type { Idioma } from '../../../i18n/idiomas';
+import { rutasPara } from '../../../data/rutas';
 import imgSilueta from '../../../assets/sira/entre-lineas-silueta.png';
 import imgEstampado from '../../../assets/sira/entre-lineas-estampado.png';
+
+const { lang = 'es' } = Astro.props as { lang?: Idioma };
+const rutas = rutasPara(lang);
+const t = {
+  es: {
+    altSilueta: 'Entre Líneas: silueta de la colección SIRA',
+    etiqueta: 'Colección actual',
+    poetico: ['Donde la geometría', 'encuentra lo orgánico.'],
+    parrafo:
+      'Una conversación serena entre líneas arquitectónicas y textiles que respiran. Piezas de edición corta creadas para trascender temporadas.',
+    descubrir: 'Descubrir la colección',
+    altDetalle: 'Entre Líneas: detalle de estampado',
+    pie: 'Líneas que dialogan. Textiles que cuentan.',
+  },
+  en: {
+    altSilueta: 'Entre Líneas: a silhouette from the SIRA collection',
+    etiqueta: 'Current collection',
+    poetico: ['Where geometry', 'meets the organic.'],
+    parrafo:
+      'A quiet conversation between architectural lines and textiles that breathe. Limited-run pieces made to outlast the seasons.',
+    descubrir: 'Discover the collection',
+    altDetalle: 'Entre Líneas: print detail',
+    pie: 'Lines in dialogue. Textiles that tell a story.',
+  },
+}[lang];
 ---
 <section class="coleccion" aria-labelledby="coleccion-titulo">
   <div class="contenedor rejilla">
     <div class="foto-grande">
       <Image
         src={imgSilueta}
-        alt="Entre Líneas: silueta de la colección SIRA"
+        alt={t.altSilueta}
         format="webp"
         widths={[420, 624, 900, 1248]}
         sizes="(max-width: 860px) calc(100vw - 40px), 44vw"
@@ -19,18 +45,15 @@ import imgEstampado from '../../../assets/sira/entre-lineas-estampado.png';
       />
     </div>
     <div class="textos">
-      <p class="etiqueta">Colección actual</p>
+      <p class="etiqueta">{t.etiqueta}</p>
       <h2 id="coleccion-titulo" class="titulo serif">Entre Líneas</h2>
-      <p class="poetico serif">Donde la geometría<br />encuentra lo orgánico.</p>
-      <p class="parrafo">
-        Una conversación serena entre líneas arquitectónicas y textiles que respiran. Piezas de edición corta
-        creadas para trascender temporadas.
-      </p>
-      <a class="enlace-flecha" href={rutas.coleccion('entre-lineas')}>Descubrir la colección<span aria-hidden="true">↗</span></a>
+      <p class="poetico serif">{t.poetico[0]}<br />{t.poetico[1]}</p>
+      <p class="parrafo">{t.parrafo}</p>
+      <a class="enlace-flecha" href={rutas.coleccion('entre-lineas')}>{t.descubrir}<span aria-hidden="true">↗</span></a>
       <div class="foto-detalle">
         <Image
           src={imgEstampado}
-          alt="Entre Líneas: detalle de estampado"
+          alt={t.altDetalle}
           format="webp"
           widths={[350, 700]}
           sizes="(max-width: 860px) 64vw, 350px"
@@ -38,7 +61,7 @@ import imgEstampado from '../../../assets/sira/entre-lineas-estampado.png';
         />
       </div>
     </div>
-    <p class="pie-editorial">Líneas que dialogan. Textiles que cuentan.</p>
+    <p class="pie-editorial">{t.pie}</p>
     <p class="indice">01 / 03</p>
   </div>
 </section>

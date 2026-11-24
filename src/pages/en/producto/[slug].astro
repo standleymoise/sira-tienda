@@ -1,0 +1,13 @@
+---
+// /en/producto/<slug>/: la misma ficha que /producto/<slug>/, en inglés.
+import Pagina from '../../producto/[slug].astro';
+import { getProductos, type Producto } from '../../../data/tienda';
+
+export async function getStaticPaths() {
+  const todos = await getProductos();
+  return todos.map((p) => ({ params: { slug: p.slug }, props: { p, todos } }));
+}
+
+const { p, todos } = Astro.props as { p: Producto; todos: Producto[] };
+---
+<Pagina lang="en" p={p} todos={todos} />

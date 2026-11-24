@@ -2,26 +2,52 @@
 // Universo reversible (Figma: 147:5121, 1440×960, fondo #f0ede6): textos a la izquierda y las dos
 // caras de una chaqueta reversible, escalonadas.
 import { Image } from 'astro:assets';
-import { rutas } from '../../../data/rutas';
+import type { Idioma } from '../../../i18n/idiomas';
+import { rutasPara } from '../../../data/rutas';
 import imgCaraA from '../../../assets/sira/reversible-cara-a.png';
 import imgCaraB from '../../../assets/sira/reversible-cara-b.png';
+
+const { lang = 'es' } = Astro.props as { lang?: Idioma };
+const rutas = rutasPara(lang);
+const t = {
+  es: {
+    etiqueta: 'El arte de transformarse',
+    titulo: ['Dos caras.', 'Una misma', 'esencia.'],
+    parrafo: ['Una pieza, dos posibilidades.', 'Descubre otra manera de vestir SIRA.'],
+    mujer: 'Reversibles de mujer',
+    hombre: 'Reversibles de hombre',
+    historia: 'La historia reversible',
+    altA: 'Chaqueta reversible SIRA, cara A',
+    altB: 'Chaqueta reversible SIRA, cara B',
+  },
+  en: {
+    etiqueta: 'The art of transformation',
+    titulo: ['Two sides.', 'One and the', 'same essence.'],
+    parrafo: ['One piece, two possibilities.', 'Discover another way to wear SIRA.'],
+    mujer: 'Reversibles for women',
+    hombre: 'Reversibles for men',
+    historia: 'The reversible story',
+    altA: 'SIRA reversible jacket, side A',
+    altB: 'SIRA reversible jacket, side B',
+  },
+}[lang];
 ---
 <section class="reversible" aria-labelledby="reversible-titulo">
   <div class="contenedor rejilla">
     <div class="textos">
-      <p class="etiqueta">El arte de transformarse</p>
-      <h2 id="reversible-titulo" class="titulo serif">Dos caras.<br />Una misma<br />esencia.</h2>
-      <p class="parrafo">Una pieza, dos posibilidades.<br />Descubre otra manera de vestir SIRA.</p>
+      <p class="etiqueta">{t.etiqueta}</p>
+      <h2 id="reversible-titulo" class="titulo serif">{t.titulo[0]}<br />{t.titulo[1]}<br />{t.titulo[2]}</h2>
+      <p class="parrafo">{t.parrafo[0]}<br />{t.parrafo[1]}</p>
       <ul class="enlaces">
-        <li><a class="enlace-flecha" href={`${rutas.reversibles}?genero=mujer#piezas`}>Reversibles de mujer<span aria-hidden="true">↗</span></a></li>
-        <li><a class="enlace-flecha" href={`${rutas.reversibles}?genero=hombre#piezas`}>Reversibles de hombre<span aria-hidden="true">↗</span></a></li>
-        <li><a class="historia" href={`${rutas.reversibles}#historia`}>La historia reversible<span aria-hidden="true">↗</span></a></li>
+        <li><a class="enlace-flecha" href={`${rutas.reversibles}?genero=mujer#piezas`}>{t.mujer}<span aria-hidden="true">↗</span></a></li>
+        <li><a class="enlace-flecha" href={`${rutas.reversibles}?genero=hombre#piezas`}>{t.hombre}<span aria-hidden="true">↗</span></a></li>
+        <li><a class="historia" href={`${rutas.reversibles}#historia`}>{t.historia}<span aria-hidden="true">↗</span></a></li>
       </ul>
     </div>
     <div class="foto cara-a">
       <Image
         src={imgCaraA}
-        alt="Chaqueta reversible SIRA, cara A"
+        alt={t.altA}
         format="webp"
         widths={[300]}
         sizes="(max-width: 860px) 46vw, 405px"
@@ -31,7 +57,7 @@ import imgCaraB from '../../../assets/sira/reversible-cara-b.png';
     <div class="foto cara-b">
       <Image
         src={imgCaraB}
-        alt="Chaqueta reversible SIRA, cara B"
+        alt={t.altB}
         format="webp"
         widths={[405, 810]}
         sizes="(max-width: 860px) 46vw, 405px"
