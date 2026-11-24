@@ -1,0 +1,20 @@
+{
+  "name": "astro-woo-tienda",
+  "type": "module",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Plantilla de e-commerce: frontend en Astro (tienda con tarjetas deslizables) y backend WordPress + WooCommerce.",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "astro": "astro"
+  },
+  "dependencies": {
+    "@astrojs/sitemap": "^3.7.6",
+    "astro": "^7.4.13"
+  }
+}

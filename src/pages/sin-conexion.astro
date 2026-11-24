@@ -1,0 +1,35 @@
+---
+// Lo que muestra la app instalada cuando no hay internet y la página pedida no está guardada.
+import Base from '../layouts/Base.astro';
+import Logo from '../components/Logo.astro';
+import { rutas } from '../data/rutas';
+---
+<Base title="Sin conexión" noindex>
+  <main class="sin-conexion">
+    <Logo alto={44} />
+    <h1>Sin conexión</h1>
+    <p>Revise su internet. Las páginas que ya visitó se pueden abrir igual; el carrito y los pagos necesitan conexión.</p>
+    <a class="btn" href={rutas.inicio}>Volver a intentar</a>
+  </main>
+</Base>
+
+<style>
+  .sin-conexion {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 18vh 20px 40px;
+    text-align: center;
+    line-height: 1.6;
+  }
+  h1 {
+    margin: 10px 0 0;
+    color: var(--primario);
+  }
+  p {
+    margin: 0 0 10px;
+  }
+</style>

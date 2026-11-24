@@ -1,0 +1,33 @@
+---
+import Base from '../layouts/Base.astro';
+import Logo from '../components/Logo.astro';
+import { rutas } from '../data/rutas';
+---
+<Base title="Página no encontrada" noindex>
+  <main class="no-encontrada">
+    <Logo alto={44} />
+    <h1>No encontramos esa página</h1>
+    <p>Puede que el enlace esté mal escrito o que la página ya no exista.</p>
+    <a class="btn" href={rutas.inicio}>Ir a la tienda</a>
+  </main>
+</Base>
+
+<style>
+  .no-encontrada {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 18vh 20px 40px;
+    text-align: center;
+  }
+  h1 {
+    margin: 10px 0 0;
+    color: var(--primario);
+  }
+  p {
+    margin: 0 0 10px;
+  }
+</style>

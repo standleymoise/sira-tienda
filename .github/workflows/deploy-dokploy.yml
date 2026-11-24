@@ -1,0 +1,44 @@
+name: Recompilar en Dokploy
+
+# Solo para tiendas publicadas en Dokploy (variable del repo DESTINO=dokploy).
+# Dokploy ya vuelve a publicar solo en cada push (Auto Deploy de la app). Este workflow cubre lo que
+# un push no cubre: el build diario (precios y stock del HTML al día) y el aviso de WordPress al
+# publicar un producto o testimonio (wordpress/mu-plugins/tienda-publicar.php → repository_dispatch).
+#
+# Secretos del repo (Settings → Secrets and variables → Actions → Secrets):
+#   DOKPLOY_URL      https://panel.midominio.com   (la URL del panel de Dokploy, sin barra final)
+#   DOKPLOY_API_KEY  Dokploy → Settings → Profile → API/CLI → Generate (guárdela solo aquí)
+#   DOKPLOY_APP_ID   el applicationId de la app de Astro (aparece en la URL de la app en el panel)
+# La API key de Dokploy vive solo en GitHub: WordPress solo tiene un token de GitHub de un repo.
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 10 * * *' # 4:00 en Costa Rica
+  repository_dispatch:
+    types: [tienda-actualizada]
+
+concurrency:
+  group: dokploy
+  cancel-in-progress: true
+
+jobs:
+  recompilar:
+    if: vars.DESTINO == 'dokploy'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Pedir un deploy a Dokploy
+        env:
+          URL: ${{ secrets.DOKPLOY_URL }}
+          KEY: ${{ secrets.DOKPLOY_API_KEY }}
+          APP: ${{ secrets.DOKPLOY_APP_ID }}
+        run: |
+          if [ -z "$URL" ] || [ -z "$KEY" ] || [ -z "$APP" ]; then
+            echo "::error::Faltan los secretos DOKPLOY_URL, DOKPLOY_API_KEY y/o DOKPLOY_APP_ID. Ver README → Publicar en Dokploy."
+            exit 1
+          fi
+          codigo=$(curl -s -o respuesta.txt -w '%{http_code}' -X POST "$URL/api/application.deploy" \
+            -H "x-api-key: $KEY" -H 'Content-Type: application/json' \
+            -d "{\"applicationId\":\"$APP\"}")
+          echo "Dokploy respondió $codigo"
+          if [ "$codigo" -ge 300 ]; then cat respuesta.txt; exit 1; fi

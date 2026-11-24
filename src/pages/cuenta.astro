@@ -1,0 +1,846 @@
+---
+// Página /cuenta: entrar, crear cuenta, recuperar contraseña y «Mi cuenta»
+// (perfil, pedidos y datos de entrega). Habla con el plugin wordpress/mu-plugins/tienda-cuenta.php.
+import Base from '../layouts/Base.astro';
+import Logo from '../components/Logo.astro';
+import { storeApiUrl } from '../data/tienda';
+import { rutas } from '../data/rutas';
+import { tienda } from '../../tienda.config';
+
+const { regiones, etiquetaRegion, etiquetaCiudad, codigoPostal } = tienda.pais;
+---
+<Base title={`Mi cuenta | ${tienda.marca.nombre}`} description={`Inicie sesión o cree su cuenta en ${tienda.marca.nombre}.`} noindex>
+  <main class="cuenta" data-api={storeApiUrl} data-inicio={rutas.inicio} data-estado="cargando">
+    <header class="cabecera">
+      <a class="redondo" href={rutas.inicio} aria-label="Volver a la tienda">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
+      </a>
+      <Logo alto={36} />
+      <a class="redondo favs" href={rutas.favoritos} aria-label="Mis favoritos">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z" /></svg>
+      </a>
+    </header>
+
+    <p class="cargando" data-vista-cargando>Cargando…</p>
+
+    <!-- ===================== sin sesión ===================== -->
+    <section class="acceso" data-vista-acceso hidden aria-labelledby="acceso-titulo">
+      <div class="burbuja" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="8.5" r="4" /><path d="M4.5 20a7.5 7.5 0 0 1 15 0" /></svg>
+      </div>
+      <h1 id="acceso-titulo">Su cuenta</h1>
+      <p class="sub">Guarde sus datos de entrega y vea sus pedidos.</p>
+
+      <div class="pestanas" role="tablist" aria-label="Acceso">
+        <button type="button" role="tab" aria-selected="true" aria-controls="form-login" id="tab-login" data-tab="login">
+          Iniciar sesión
+        </button>
+        <button type="button" role="tab" aria-selected="false" aria-controls="form-registro" id="tab-registro" data-tab="registro" tabindex="-1">
+          Crear cuenta
+        </button>
+      </div>
+
+      <form class="form" id="form-login" role="tabpanel" aria-labelledby="tab-login" data-form="login" novalidate>
+        <label>Correo electrónico <input name="email" type="email" required autocomplete="email" /></label>
+        <label>Contraseña <input name="password" type="password" required autocomplete="current-password" /></label>
+        <p class="error" data-error role="alert" hidden></p>
+        <button class="pildora" type="submit">Iniciar sesión</button>
+        <button class="enlace" type="button" data-ir="recuperar">¿Olvidó su contraseña?</button>
+      </form>
+
+      <form class="form" id="form-registro" role="tabpanel" aria-labelledby="tab-registro" data-form="registro" hidden novalidate>
+        <div class="dos">
+          <label>Nombre <input name="nombre" required autocomplete="given-name" /></label>
+          <label>Apellidos <input name="apellidos" autocomplete="family-name" /></label>
+        </div>
+        <label>Correo electrónico <input name="email" type="email" required autocomplete="email" /></label>
+        <label>
+          Contraseña
+          <input name="password" type="password" required minlength="8" autocomplete="new-password" />
+          <span class="ayuda">Al menos 8 caracteres.</span>
+        </label>
+        <p class="error" data-error role="alert" hidden></p>
+        <button class="pildora" type="submit">Crear cuenta</button>
+      </form>
+
+      <form class="form" data-form="recuperar" hidden novalidate>
+        <p class="sub">Escriba su correo y le enviaremos un enlace para crear una contraseña nueva.</p>
+        <label>Correo electrónico <input name="email" type="email" required autocomplete="email" /></label>
+        <p class="error" data-error role="alert" hidden></p>
+        <p class="ok" data-ok role="status" hidden></p>
+        <button class="pildora" type="submit">Enviar enlace</button>
+        <button class="enlace" type="button" data-ir="login">Volver a iniciar sesión</button>
+      </form>
+    </section>
+
+    <!-- ===================== con sesión ===================== -->
+    <section class="perfil" data-vista-perfil hidden aria-labelledby="perfil-nombre">
+      <div class="avatar" aria-hidden="true"><span data-iniciales></span></div>
+      <h1 id="perfil-nombre" data-nombre></h1>
+      <p class="sub" data-email></p>
+      <p class="desde" data-desde></p>
+
+      <div class="atajos">
+        <button type="button" class="atajo" data-ir="datos">
+          <span class="atajo-icono"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4l10.5-10.5a2.1 2.1 0 0 0-4-4L4 16z" /></svg></span>
+          Mis datos
+        </button>
+        <a class="atajo principal" href={rutas.inicio}>
+          <span class="atajo-icono"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2l2.4 10.2a1.5 1.5 0 0 0 1.5 1.1h8.6a1.5 1.5 0 0 0 1.4-1.1L21 8H6.2" /><circle cx="9.5" cy="19.5" r="1.4" /><circle cx="17" cy="19.5" r="1.4" /></svg></span>
+          Tienda
+        </a>
+        <a class="atajo" href={rutas.favoritos}>
+          <span class="atajo-icono estrella"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z" /></svg></span>
+          Favoritos
+        </a>
+      </div>
+
+      <section class="tarjeta" aria-labelledby="pedidos-titulo">
+        <h2 id="pedidos-titulo">Mis pedidos</h2>
+        <ul class="pedidos" data-pedidos></ul>
+        <p class="vacio" data-sin-pedidos hidden>
+          Todavía no tiene pedidos. <a href={rutas.inicio}>Vaya a la tienda</a> y deslice a la derecha lo que le guste.
+        </p>
+      </section>
+
+      <section class="tarjeta" id="datos" aria-labelledby="datos-titulo">
+        <h2 id="datos-titulo">Mis datos de entrega</h2>
+        <p class="sub izq">Se usan para llenar el checkout automáticamente.</p>
+        <form class="form" data-form="datos" novalidate>
+          <div class="dos">
+            <label>Nombre <input name="nombre" required autocomplete="given-name" /></label>
+            <label>Apellidos <input name="apellidos" autocomplete="family-name" /></label>
+          </div>
+          <label>Teléfono <input name="telefono" type="tel" autocomplete="tel" /></label>
+          <div class="dos">
+            {regiones.length > 0 && (
+              <label>
+                {etiquetaRegion}
+                <select name="provincia">
+                  <option value="">Elegir…</option>
+                  {regiones.map(([c, n]) => <option value={c}>{n}</option>)}
+                </select>
+              </label>
+            )}
+            <label>{etiquetaCiudad} <input name="ciudad" autocomplete="address-level2" /></label>
+          </div>
+          <label>Dirección exacta <input name="direccion" autocomplete="street-address" /></label>
+          <label>
+            Código postal
+            <input name="postal" pattern={codigoPostal.patron || undefined} autocomplete="postal-code" />
+          </label>
+          <p class="error" data-error role="alert" hidden></p>
+          <button class="pildora" type="submit">Guardar cambios</button>
+        </form>
+      </section>
+
+      <button class="salir" type="button" data-salir>Cerrar sesión</button>
+    </section>
+
+    <button class="instalar-cuenta" type="button" data-instalar-app hidden>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="2.5" width="10" height="19" rx="2.5" /><path d="M12 7v7M9 11l3 3 3-3" /></svg>
+      Instalar la app en este teléfono
+    </button>
+
+    <p class="aviso" data-aviso role="status" aria-live="polite"></p>
+  </main>
+</Base>
+
+<script>
+  import { tienda } from '../../tienda.config';
+  import { crearCliente, iniciales, leerPerfil, type Pedido, type Perfil } from '../scripts/tienda-api';
+
+  const raiz = document.querySelector<HTMLElement>('.cuenta');
+  if (raiz) iniciar(raiz);
+
+  function iniciar(raiz: HTMLElement) {
+    const cliente = crearCliente(raiz.dataset.api!);
+    const $ = <T extends HTMLElement = HTMLElement>(sel: string) => raiz.querySelector<T>(sel)!;
+    const vistas = {
+      cargando: $('[data-vista-cargando]'),
+      acceso: $('[data-vista-acceso]'),
+      perfil: $('[data-vista-perfil]'),
+    };
+    const forms = {
+      login: $<HTMLFormElement>('[data-form="login"]'),
+      registro: $<HTMLFormElement>('[data-form="registro"]'),
+      recuperar: $<HTMLFormElement>('[data-form="recuperar"]'),
+      datos: $<HTMLFormElement>('[data-form="datos"]'),
+    };
+
+    let avisoTimer = 0;
+    const avisar = (texto: string) => {
+      const a = $('[data-aviso]');
+      a.textContent = texto;
+      a.classList.add('visible');
+      clearTimeout(avisoTimer);
+      avisoTimer = window.setTimeout(() => a.classList.remove('visible'), 2600);
+    };
+
+    function mostrar(vista: keyof typeof vistas) {
+      (Object.keys(vistas) as (keyof typeof vistas)[]).forEach((k) => (vistas[k].hidden = k !== vista));
+      raiz.dataset.estado = vista;
+    }
+
+    // ---------- pestañas de acceso ----------
+    const tabs = [...raiz.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
+    function irA(cual: 'login' | 'registro' | 'recuperar') {
+      tabs.forEach((t) => {
+        const activa = t.dataset.tab === cual;
+        t.setAttribute('aria-selected', String(activa));
+        t.tabIndex = activa ? 0 : -1;
+      });
+      raiz.querySelector('.pestanas')!.toggleAttribute('hidden', cual === 'recuperar');
+      forms.login.hidden = cual !== 'login';
+      forms.registro.hidden = cual !== 'registro';
+      forms.recuperar.hidden = cual !== 'recuperar';
+      const f = forms[cual];
+      f.querySelector<HTMLElement>('[data-error]')!.hidden = true;
+      f.querySelector('input')?.focus();
+    }
+    tabs.forEach((t) =>
+      t.addEventListener('click', () => irA(t.dataset.tab as 'login' | 'registro')),
+    );
+    raiz.querySelector('.pestanas')!.addEventListener('keydown', (e) => {
+      const k = (e as KeyboardEvent).key;
+      if (k !== 'ArrowLeft' && k !== 'ArrowRight') return;
+      const actual = tabs.findIndex((t) => t.getAttribute('aria-selected') === 'true');
+      const siguiente = tabs[(actual + 1) % tabs.length];
+      irA(siguiente.dataset.tab as 'login' | 'registro');
+      siguiente.focus();
+    });
+
+    // ---------- envío de formularios ----------
+    async function enviar(f: HTMLFormElement, accion: (d: Record<string, string>) => Promise<void>) {
+      const error = f.querySelector<HTMLElement>('[data-error]')!;
+      const boton = f.querySelector<HTMLButtonElement>('button[type="submit"]')!;
+      error.hidden = true;
+      if (!f.checkValidity()) {
+        f.classList.add('validar');
+        const malo = f.querySelector<HTMLInputElement>(':invalid');
+        error.textContent = malo?.validationMessage || 'Revise los campos marcados.';
+        error.hidden = false;
+        malo?.focus();
+        return;
+      }
+      const texto = boton.textContent;
+      boton.disabled = true;
+      boton.textContent = 'Un momento…';
+      try {
+        await accion(Object.fromEntries(new FormData(f)) as Record<string, string>);
+        f.classList.remove('validar');
+      } catch (e) {
+        error.textContent = (e as Error).message || 'Algo salió mal. Intente de nuevo.';
+        error.hidden = false;
+      } finally {
+        boton.disabled = false;
+        boton.textContent = texto;
+      }
+    }
+
+    forms.login.addEventListener('submit', (e) => {
+      e.preventDefault();
+      enviar(forms.login, async (d) => {
+        const p = await cliente.login(d.email, d.password);
+        forms.login.reset();
+        avisar(`¡Hola, ${p.nombre || 'de nuevo'}!`);
+        await cargarCuenta();
+      });
+    });
+    forms.registro.addEventListener('submit', (e) => {
+      e.preventDefault();
+      enviar(forms.registro, async (d) => {
+        const p = await cliente.registro({
+          email: d.email,
+          password: d.password,
+          nombre: d.nombre,
+          apellidos: d.apellidos,
+        });
+        forms.registro.reset();
+        avisar(`¡Bienvenido, ${p.nombre}!`);
+        await cargarCuenta();
+      });
+    });
+    forms.recuperar.addEventListener('submit', (e) => {
+      e.preventDefault();
+      enviar(forms.recuperar, async (d) => {
+        await cliente.recuperar(d.email);
+        const ok = forms.recuperar.querySelector<HTMLElement>('[data-ok]')!;
+        ok.textContent = `Si existe una cuenta con ${d.email}, le enviamos un correo con el enlace.`;
+        ok.hidden = false;
+      });
+    });
+    forms.datos.addEventListener('submit', (e) => {
+      e.preventDefault();
+      enviar(forms.datos, async (d) => {
+        const p = await cliente.guardarCuenta(d);
+        pintarPerfil(p);
+        avisar('Datos guardados.');
+      });
+    });
+
+    raiz.addEventListener('click', (e) => {
+      const ir = (e.target as HTMLElement).closest<HTMLElement>('[data-ir]');
+      if (!ir) return;
+      const destino = ir.dataset.ir!;
+      if (destino === 'datos') {
+        document.getElementById('datos')!.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        forms.datos.querySelector('input')?.focus({ preventScroll: true });
+      } else irA(destino as 'login' | 'recuperar');
+    });
+
+    $('[data-salir]').addEventListener('click', async () => {
+      await cliente.salir();
+      avisar('Sesión cerrada.');
+      irA('login');
+      mostrar('acceso');
+    });
+
+    // ---------- perfil ----------
+    const fecha = (iso: string, opciones: Intl.DateTimeFormatOptions) =>
+      iso ? new Intl.DateTimeFormat(tienda.pais.locale, opciones).format(new Date(iso + 'T12:00:00')) : '';
+    const dinero = (n: number, moneda: string) =>
+      new Intl.NumberFormat(tienda.pais.locale, { style: 'currency', currency: moneda, maximumFractionDigits: 0 }).format(n);
+
+    function pintarPerfil(p: Perfil) {
+      $('[data-iniciales]').textContent = iniciales(p);
+      $('[data-nombre]').textContent = [p.nombre, p.apellidos].filter(Boolean).join(' ') || p.email;
+      $('[data-email]').textContent = p.email;
+      $('[data-desde]').textContent = p.desde ? `Cliente desde ${fecha(p.desde, { month: 'long', year: 'numeric' })}` : '';
+      const f = forms.datos.elements as unknown as Record<string, HTMLInputElement>;
+      (['nombre', 'apellidos', 'telefono', 'provincia', 'ciudad', 'direccion', 'postal'] as const).forEach((k) => {
+        if (f[k]) f[k].value = p[k] ?? '';
+      });
+    }
+
+    function pintarPedidos(pedidos: Pedido[]) {
+      const lista = $('[data-pedidos]');
+      $('[data-sin-pedidos]').hidden = pedidos.length > 0;
+      lista.replaceChildren(
+        ...pedidos.map((o) => {
+          const li = document.createElement('li');
+          li.className = 'pedido';
+          li.innerHTML = `
+            <div class="pedido-cabeza">
+              <strong></strong>
+              <span class="estado"></span>
+            </div>
+            <div class="pedido-fotos"></div>
+            <p class="pedido-items"></p>
+            <div class="pedido-pie"><span class="pedido-fecha"></span><strong class="pedido-total"></strong></div>`;
+          li.querySelector('.pedido-cabeza strong')!.textContent = `Pedido #${o.numero}`;
+          const estado = li.querySelector<HTMLElement>('.estado')!;
+          estado.textContent = o.estado_texto;
+          estado.dataset.estado = o.estado;
+          const fotos = li.querySelector<HTMLElement>('.pedido-fotos')!;
+          o.items.forEach((it) => {
+            if (!it.imagen) return;
+            const img = document.createElement('img');
+            img.src = it.imagen;
+            img.alt = '';
+            img.loading = 'lazy';
+            fotos.append(img);
+          });
+          li.querySelector('.pedido-items')!.textContent = o.items.map((it) => `${it.cantidad}× ${it.nombre}`).join(' · ');
+          li.querySelector('.pedido-fecha')!.textContent = [fecha(o.fecha, { day: 'numeric', month: 'short', year: 'numeric' }), o.pago]
+            .filter(Boolean)
+            .join(' · ');
+          li.querySelector('.pedido-total')!.textContent = dinero(o.total, o.moneda);
+          return li;
+        }),
+      );
+    }
+
+    async function cargarCuenta() {
+      try {
+        const { perfil, pedidos } = await cliente.cuenta();
+        pintarPerfil(perfil);
+        pintarPedidos(pedidos);
+        mostrar('perfil');
+      } catch (e) {
+        if ((e as { status?: number }).status === 401) {
+          mostrar('acceso');
+          irA('login');
+        } else {
+          avisar((e as Error).message);
+          // Sin conexión: con el perfil guardado al menos se ve quién es.
+          const p = leerPerfil();
+          if (p) {
+            pintarPerfil(p);
+            pintarPedidos([]);
+            mostrar('perfil');
+          } else mostrar('acceso');
+        }
+      }
+    }
+
+    if (cliente.conSesion()) {
+      const p = leerPerfil();
+      if (p) {
+        pintarPerfil(p);
+        mostrar('perfil');
+      }
+      cargarCuenta();
+    } else {
+      mostrar('acceso');
+      if (location.hash === '#crear') irA('registro');
+    }
+  }
+</script>
+
+<style>
+  .cuenta {
+    --degradado: linear-gradient(135deg, color-mix(in srgb, var(--acento) 70%, #fff), var(--acento) 45%, var(--acento-oscuro));
+    width: min(520px, 100%);
+    min-height: 100dvh;
+    margin-inline: auto;
+    padding: max(10px, env(safe-area-inset-top)) 16px max(32px, env(safe-area-inset-bottom));
+  }
+  .cabecera {
+    display: grid;
+    grid-template-columns: 52px 1fr 52px;
+    align-items: center;
+    justify-items: center;
+    min-height: 52px;
+  }
+  .redondo {
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    border: 1px solid var(--borde);
+    border-radius: 50%;
+    background: #fff;
+    color: var(--primario);
+  }
+  .redondo svg,
+  .atajo-icono svg,
+  .burbuja svg {
+    width: 22px;
+    height: 22px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .redondo.favs {
+    color: var(--favorito);
+  }
+  .redondo.favs path,
+  .estrella path {
+    fill: currentColor;
+    stroke: none;
+  }
+  .cargando {
+    margin-top: 30vh;
+    text-align: center;
+  }
+  .cargando[hidden],
+  section[hidden],
+  form[hidden],
+  .pestanas[hidden] {
+    display: none;
+  }
+
+  h1 {
+    margin: 14px 0 4px;
+    font-size: clamp(26px, 6vw, 32px);
+    text-align: center;
+    color: var(--primario);
+  }
+  .sub {
+    margin: 0;
+    text-align: center;
+    line-height: 1.5;
+  }
+  .sub.izq {
+    text-align: left;
+    margin-bottom: 14px;
+    font-size: 14px;
+  }
+
+  /* ---------- acceso ---------- */
+  .acceso {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 4vh;
+  }
+  .burbuja {
+    display: grid;
+    place-items: center;
+    width: 88px;
+    height: 88px;
+    border-radius: 50%;
+    background: var(--degradado);
+    color: #fff;
+    box-shadow: 0 12px 30px color-mix(in srgb, var(--acento) 35%, transparent);
+  }
+  .burbuja svg {
+    width: 40px;
+    height: 40px;
+  }
+  .pestanas {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    width: 100%;
+    margin: 24px 0 18px;
+    padding: 4px;
+    border-radius: 999px;
+    background: #fff;
+    box-shadow: 0 4px 16px color-mix(in srgb, var(--primario) 10%, transparent);
+  }
+  .pestanas button {
+    padding: 12px;
+    border: 0;
+    border-radius: 999px;
+    background: none;
+    font: inherit;
+    font-weight: 600;
+    color: var(--texto);
+    cursor: pointer;
+  }
+  .pestanas [aria-selected='true'] {
+    background: var(--degradado);
+    color: #fff;
+  }
+
+  .form {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    width: 100%;
+  }
+  .form label {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--primario);
+  }
+  .dos {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  .form input,
+  .form select {
+    width: 100%;
+    padding: 14px 18px;
+    border: 1px solid var(--borde);
+    border-radius: 999px;
+    background: #fff;
+    font: inherit;
+    font-weight: 400;
+    color: var(--texto);
+  }
+  .form input:focus,
+  .form select:focus {
+    outline: 3px solid color-mix(in srgb, var(--acento) 30%, #fff);
+    border-color: var(--acento);
+  }
+  .validar :invalid {
+    border-color: var(--acento);
+  }
+  .ayuda {
+    font-weight: 400;
+    font-size: 13px;
+    color: var(--texto);
+  }
+  .pildora {
+    margin-top: 6px;
+    padding: 16px;
+    border: 0;
+    border-radius: 999px;
+    background: var(--degradado);
+    color: #fff;
+    font: inherit;
+    font-weight: 700;
+    font-size: 17px;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    box-shadow: 0 10px 24px color-mix(in srgb, var(--acento) 30%, transparent);
+    transition: transform 0.15s;
+  }
+  .pildora:hover {
+    transform: translateY(-1px);
+  }
+  .pildora:disabled {
+    opacity: 0.7;
+    cursor: wait;
+  }
+  .enlace {
+    align-self: center;
+    border: 0;
+    background: none;
+    font: inherit;
+    font-size: 14px;
+    color: var(--secundario);
+    text-decoration: underline;
+    cursor: pointer;
+  }
+  .error,
+  .ok {
+    margin: 0;
+    padding: 10px 14px;
+    border-radius: 14px;
+    font-size: 14px;
+  }
+  .error {
+    background: #fff0f3;
+    color: #b3123a;
+  }
+  .ok {
+    background: #eafaf1;
+    color: #0e7a43;
+  }
+  .error[hidden],
+  .ok[hidden] {
+    display: none;
+  }
+
+  /* ---------- perfil ---------- */
+  .perfil {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 2vh;
+  }
+  .avatar {
+    display: grid;
+    place-items: center;
+    width: 128px;
+    height: 128px;
+    padding: 5px;
+    border-radius: 50%;
+    background: conic-gradient(from 200deg, var(--acento), color-mix(in srgb, var(--acento) 50%, #fff), var(--secundario), var(--acento));
+  }
+  .avatar span {
+    display: grid;
+    place-items: center;
+    width: 100%;
+    height: 100%;
+    border: 4px solid #fff;
+    border-radius: 50%;
+    background: linear-gradient(160deg, var(--secundario), var(--primario));
+    color: #fff;
+    font-family: var(--font-alt);
+    font-weight: 800;
+    font-size: 42px;
+    letter-spacing: 0.02em;
+  }
+  .desde {
+    margin: 6px 0 0;
+    font-size: 13px;
+    color: var(--texto);
+  }
+  .atajos {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: clamp(18px, 8vw, 40px);
+    margin: 24px 0 8px;
+  }
+  .atajo {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    border: 0;
+    background: none;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--primario);
+    text-decoration: none;
+    cursor: pointer;
+  }
+  .atajo-icono {
+    display: grid;
+    place-items: center;
+    width: 58px;
+    height: 58px;
+    border-radius: 50%;
+    background: #fff;
+    color: var(--secundario);
+    box-shadow: 0 6px 18px color-mix(in srgb, var(--primario) 16%, transparent);
+  }
+  .atajo-icono.estrella {
+    color: var(--favorito);
+  }
+  .atajo.principal .atajo-icono {
+    width: 72px;
+    height: 72px;
+    background: var(--degradado);
+    color: #fff;
+    box-shadow: 0 10px 24px color-mix(in srgb, var(--acento) 30%, transparent);
+  }
+  .atajo.principal .atajo-icono svg circle {
+    fill: currentColor;
+    stroke: none;
+  }
+  .atajo.principal .atajo-icono svg {
+    width: 28px;
+    height: 28px;
+  }
+
+  .tarjeta {
+    width: 100%;
+    margin-top: 18px;
+    padding: 20px;
+    border-radius: 22px;
+    background: #fff;
+    box-shadow: 0 8px 24px color-mix(in srgb, var(--primario) 10%, transparent);
+  }
+  .tarjeta h2 {
+    margin: 0 0 12px;
+    font-size: 19px;
+    color: var(--primario);
+  }
+  .vacio {
+    margin: 0;
+    line-height: 1.6;
+  }
+  .vacio[hidden] {
+    display: none;
+  }
+  .pedidos {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 12px;
+  }
+  .pedidos :global(.pedido) {
+    padding: 14px;
+    border: 1px solid var(--borde);
+    border-radius: 16px;
+  }
+  .pedidos :global(.pedido-cabeza),
+  .pedidos :global(.pedido-pie) {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    color: var(--primario);
+  }
+  .pedidos :global(.estado) {
+    padding: 4px 12px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    background: #e8f1fb;
+    color: var(--secundario);
+  }
+  .pedidos :global(.estado[data-estado='completed']) {
+    background: #eafaf1;
+    color: #0e7a43;
+  }
+  .pedidos :global(.estado[data-estado='on-hold']),
+  .pedidos :global(.estado[data-estado='pending']) {
+    background: #fff5dc;
+    color: #8a5a00;
+  }
+  .pedidos :global(.estado[data-estado='cancelled']),
+  .pedidos :global(.estado[data-estado='failed']),
+  .pedidos :global(.estado[data-estado='refunded']) {
+    background: #fff0f3;
+    color: #b3123a;
+  }
+  .pedidos :global(.pedido-fotos) {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+  }
+  .pedidos :global(.pedido-fotos:empty) {
+    display: none;
+  }
+  .pedidos :global(.pedido-fotos img) {
+    width: 52px;
+    height: 52px;
+    object-fit: contain;
+    border-radius: 12px;
+    background: var(--suave-claro);
+  }
+  .pedidos :global(.pedido-items) {
+    margin: 10px 0;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  .pedidos :global(.pedido-fecha) {
+    font-size: 13px;
+    color: var(--texto);
+  }
+  .salir {
+    margin-top: 24px;
+    padding: 14px 32px;
+    border: 1px solid var(--borde);
+    border-radius: 999px;
+    background: #fff;
+    font: inherit;
+    font-weight: 600;
+    color: var(--acento);
+    cursor: pointer;
+  }
+
+  .aviso {
+    position: fixed;
+    left: 50%;
+    bottom: 24px;
+    z-index: 50;
+    max-width: min(420px, 100% - 32px);
+    margin: 0;
+    padding: 12px 18px;
+    border-radius: 12px;
+    background: var(--primario);
+    color: #fff;
+    font-size: 15px;
+    text-align: center;
+    opacity: 0;
+    transform: translate(-50%, 12px);
+    transition:
+      opacity 0.2s,
+      transform 0.2s;
+    pointer-events: none;
+  }
+  .aviso.visible {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+
+  @media (max-width: 380px) {
+    .dos {
+      grid-template-columns: 1fr;
+    }
+  }
+  .instalar-cuenta {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    margin: 18px 0 0;
+    padding: 13px 18px;
+    border: 1.5px dashed currentColor;
+    border-radius: 16px;
+    background: none;
+    color: var(--secundario);
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .instalar-cuenta[hidden] {
+    display: none;
+  }
+  .instalar-cuenta svg {
+    width: 22px;
+    height: 22px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+</style>

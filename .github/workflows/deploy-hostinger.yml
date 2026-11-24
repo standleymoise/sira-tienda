@@ -1,0 +1,69 @@
+name: Publicar en Hostinger
+
+# Compila la tienda y publica el resultado en la rama «hostinger».
+# Hostinger (hPanel → Avanzado → GIT) clona esa rama en public_html y se actualiza solo.
+#
+# Variables del repo (Settings → Secrets and variables → Actions → pestaña Variables):
+#   SITE_URL           https://midominio.com                  (obligatoria)
+#   PUBLIC_TIENDA_URL  https://tienda.midominio.com           (obligatoria)
+#   BASE_PATH          /   (opcional; solo si la tienda vive en una subcarpeta)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  # Recompilar cada día: el HTML (y lo que lee Google: precio, stock, productos nuevos) queda al día
+  # aunque nadie toque el código. 10:00 UTC = 4:00 en Costa Rica.
+  schedule:
+    - cron: '0 10 * * *'
+  # WordPress pide un build al guardar un producto o un testimonio (wordpress/mu-plugins/tienda-publicar.php).
+  repository_dispatch:
+    types: [tienda-actualizada]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: hostinger
+  cancel-in-progress: true
+
+jobs:
+  publicar:
+    # Con la variable DESTINO=dokploy la tienda se publica en Dokploy (deploy-dokploy.yml), no aquí.
+    if: vars.DESTINO != 'dokploy'
+    runs-on: ubuntu-latest
+    env:
+      SITE_URL: ${{ vars.SITE_URL }}
+      PUBLIC_TIENDA_URL: ${{ vars.PUBLIC_TIENDA_URL }}
+      BASE_PATH: ${{ vars.BASE_PATH || '/' }}
+    steps:
+      - name: Revisar configuración
+        run: |
+          if [ -z "$SITE_URL" ] || [ -z "$PUBLIC_TIENDA_URL" ]; then
+            echo "::error::Faltan las variables SITE_URL y/o PUBLIC_TIENDA_URL (Settings → Secrets and variables → Actions → Variables). Ver README."
+            exit 1
+          fi
+
+      - name: Descargar el código
+        uses: actions/checkout@v4
+
+      - name: Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Compilar
+        run: |
+          npm ci
+          npm run build
+
+      - name: Publicar en la rama hostinger
+        run: |
+          cd dist
+          git init -q -b hostinger
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Sitio compilado de ${GITHUB_SHA::7}"
+          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${GITHUB_REPOSITORY}.git" hostinger

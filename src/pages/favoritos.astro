@@ -1,0 +1,439 @@
+---
+// Página /favoritos: los productos guardados con ↑ en la tienda.
+// Los favoritos viven en el navegador (localStorage, por SKU); precios y stock se leen en vivo
+// de WooCommerce y «Agregar al carrito» usa el mismo carrito que la tienda.
+import Base from '../layouts/Base.astro';
+import Logo from '../components/Logo.astro';
+import { getProductos, storeApiUrl } from '../data/tienda';
+import { rutas } from '../data/rutas';
+import { tienda } from '../../tienda.config';
+
+// Catálogo de la última compilación: se muestra al instante y luego se actualiza en vivo.
+const iniciales = (await getProductos()).map((p) => ({
+  id: p.id,
+  sku: p.sku,
+  nombre: p.nombre,
+  precio: p.precio,
+  enStock: p.enStock,
+  stockTexto: p.stockTexto,
+  imagen: p.imagen?.src ?? '',
+  alt: p.imagen?.alt ?? p.nombre,
+}));
+---
+<Base title={`Mis favoritos | ${tienda.marca.nombre}`} description="Los productos que guardó como favoritos." noindex>
+  <main class="favs" data-api={storeApiUrl} data-inicio={rutas.inicio}>
+    <header class="cabecera">
+      <a class="volver" href={rutas.inicio}>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
+        <span class="volver-texto">Tienda</span>
+      </a>
+      <Logo alto={36} />
+      <a class="btn-redondo" href={`${rutas.inicio}#carrito`}>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2l2.4 10.2a1.5 1.5 0 0 0 1.5 1.1h8.6a1.5 1.5 0 0 0 1.4-1.1L21 8H6.2" /><circle cx="9.5" cy="19.5" r="1.4" /><circle cx="17" cy="19.5" r="1.4" /></svg>
+        <span class="sr-only">Ver carrito</span>
+        <span class="contador" data-contador hidden>0</span>
+      </a>
+    </header>
+
+    <h1>Mis favoritos</h1>
+
+    <ul class="lista" data-lista aria-live="polite"></ul>
+
+    <div class="vacio" data-vacio hidden>
+      <p class="vacio-icono" aria-hidden="true">★</p>
+      <p class="vacio-titulo">Todavía no tiene favoritos</p>
+      <p>En la tienda, deslice un producto hacia arriba (o toque ★) para guardarlo aquí.</p>
+      <a class="btn" href={rutas.inicio}>Ir a la tienda</a>
+    </div>
+
+    <p class="aviso" data-aviso role="status" aria-live="polite"></p>
+  </main>
+
+  <script type="application/json" data-iniciales set:html={JSON.stringify(iniciales)} />
+</Base>
+
+<script>
+  import { crearCliente, formato, leerFavoritos, guardarFavoritos, textoPlano } from '../scripts/tienda-api';
+
+  type Fav = {
+    id: number;
+    sku: string;
+    nombre: string;
+    precio: string;
+    enStock: boolean;
+    stockTexto: string;
+    imagen: string;
+    alt: string;
+  };
+
+  const raiz = document.querySelector<HTMLElement>('.favs');
+  if (raiz) iniciar(raiz);
+
+  function iniciar(raiz: HTMLElement) {
+    const cliente = crearCliente(raiz.dataset.api!);
+    const lista = raiz.querySelector<HTMLUListElement>('[data-lista]')!;
+    const vacio = raiz.querySelector<HTMLElement>('[data-vacio]')!;
+    const contador = raiz.querySelector<HTMLElement>('[data-contador]')!;
+    const aviso = raiz.querySelector<HTMLElement>('[data-aviso]')!;
+    const inicio = raiz.dataset.inicio || '/';
+
+    let productos: Fav[] = JSON.parse(document.querySelector('[data-iniciales]')!.textContent || '[]');
+    let favoritos = leerFavoritos();
+
+    let avisoTimer = 0;
+    const avisar = (texto: string) => {
+      aviso.textContent = texto;
+      aviso.classList.add('visible');
+      clearTimeout(avisoTimer);
+      avisoTimer = window.setTimeout(() => aviso.classList.remove('visible'), 2600);
+    };
+    const pintarContador = (n: number) => {
+      contador.textContent = String(n);
+      contador.hidden = n === 0;
+    };
+
+    function pintar() {
+      const favs = productos.filter((p) => favoritos.has(p.sku));
+      vacio.hidden = favs.length > 0;
+      lista.hidden = favs.length === 0;
+      lista.replaceChildren(
+        ...favs.map((p) => {
+          const li = document.createElement('li');
+          li.className = 'tarjeta';
+          li.innerHTML = `
+            <a class="foto" href="${inicio}#${encodeURIComponent(p.sku)}"><img alt="" loading="lazy" /></a>
+            <div class="info">
+              <h2><a href="${inicio}#${encodeURIComponent(p.sku)}"></a></h2>
+              <p class="precio"></p>
+              <p class="stock"></p>
+              <div class="botones">
+                <button type="button" class="btn agregar">Agregar al carrito</button>
+                <button type="button" class="quitar"></button>
+              </div>
+            </div>`;
+          const img = li.querySelector('img')!;
+          if (p.imagen) {
+            img.src = p.imagen;
+            img.alt = p.alt;
+          } else img.remove();
+          li.querySelector('h2 a')!.textContent = p.nombre;
+          li.querySelector('.precio')!.textContent = p.precio;
+          const st = li.querySelector<HTMLElement>('.stock')!;
+          st.textContent = p.stockTexto;
+          st.classList.toggle('agotado', !p.enStock);
+
+          const agregarBtn = li.querySelector<HTMLButtonElement>('.agregar')!;
+          agregarBtn.disabled = !p.enStock;
+          if (!p.enStock) agregarBtn.textContent = 'Agotado';
+          agregarBtn.addEventListener('click', async () => {
+            agregarBtn.disabled = true;
+            agregarBtn.textContent = 'Agregando…';
+            try {
+              const c = await cliente.agregar(p.id);
+              pintarContador(c.items_count);
+              avisar(`Agregado al carrito: ${p.nombre}`);
+            } catch (e) {
+              avisar(`No se pudo agregar: ${(e as Error).message}`);
+            } finally {
+              agregarBtn.disabled = false;
+              agregarBtn.textContent = 'Agregar al carrito';
+            }
+          });
+
+          const quitar = li.querySelector<HTMLButtonElement>('.quitar')!;
+          quitar.textContent = 'Quitar';
+          quitar.setAttribute('aria-label', `Quitar ${p.nombre} de favoritos`);
+          quitar.addEventListener('click', () => {
+            favoritos.delete(p.sku);
+            guardarFavoritos(favoritos);
+            pintar();
+            avisar(`Quitado de favoritos: ${p.nombre}`);
+          });
+          return li;
+        }),
+      );
+    }
+
+    async function refrescar() {
+      const vivos = await cliente.productos();
+      productos = vivos.map((p) => ({
+        id: p.id,
+        sku: p.sku,
+        nombre: p.name,
+        precio: formato(p.prices.price, p.prices),
+        enStock: p.is_purchasable && p.is_in_stock,
+        stockTexto: p.stock_availability?.text || (p.is_in_stock ? 'Disponible' : 'Agotado'),
+        imagen: p.images[0]?.src ?? '',
+        alt: textoPlano(p.images[0]?.alt || p.name),
+      }));
+      pintar();
+    }
+
+    pintar();
+    refrescar().catch(() => {
+      /* sin conexión con la tienda: quedan los datos de la última compilación */
+    });
+    if (cliente.tieneCarrito())
+      cliente
+        .carrito()
+        .then((c) => pintarContador(c.items_count))
+        .catch(() => {});
+    window.addEventListener('pageshow', (e) => {
+      if (!e.persisted) return;
+      favoritos = leerFavoritos();
+      pintar();
+    });
+  }
+</script>
+
+<style>
+  .favs {
+    width: min(1100px, 100%);
+    min-height: 100dvh;
+    margin-inline: auto;
+    padding: max(10px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom));
+  }
+  .cabecera {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    min-height: 52px;
+  }
+  .cabecera :global(.logo) {
+    justify-self: center;
+  }
+  .volver {
+    justify-self: start;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-weight: 600;
+    color: var(--primario);
+    text-decoration: none;
+  }
+  @media (max-width: 420px) {
+    .volver-texto {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      white-space: nowrap;
+    }
+    .volver {
+      width: 44px;
+      height: 44px;
+      justify-content: center;
+      border: 1px solid var(--borde);
+      border-radius: 50%;
+      background: #fff;
+    }
+  }
+  .volver svg,
+  .btn-redondo svg {
+    width: 22px;
+    height: 22px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .btn-redondo {
+    justify-self: end;
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 52px;
+    height: 52px;
+    border: 1px solid var(--borde);
+    border-radius: 50%;
+    background: #fff;
+    color: var(--primario);
+  }
+  .btn-redondo svg {
+    width: 26px;
+    height: 26px;
+  }
+  .btn-redondo svg circle {
+    fill: currentColor;
+    stroke: none;
+  }
+  .contador {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    min-width: 22px;
+    height: 22px;
+    padding: 0 6px;
+    border-radius: 11px;
+    background: var(--acento);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 22px;
+    text-align: center;
+  }
+  .contador[hidden] {
+    display: none;
+  }
+  h1 {
+    margin: 20px 0 16px;
+    font-size: clamp(24px, 2vw, 32px);
+    color: var(--primario);
+  }
+
+  .lista {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+  @media (min-width: 700px) {
+    .lista {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 20px;
+    }
+  }
+  @media (min-width: 1000px) {
+    .lista {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+  }
+  .lista[hidden] {
+    display: none;
+  }
+  .lista :global(.tarjeta) {
+    display: flex;
+    flex-direction: column;
+    border-radius: 18px;
+    overflow: hidden;
+    background: #fff;
+    box-shadow: 0 8px 24px color-mix(in srgb, var(--primario) 12%, transparent);
+  }
+  .lista :global(.foto) {
+    display: block;
+    aspect-ratio: 1;
+    /* Sin overflow, una foto alta estiraría el cuadro por encima del aspect-ratio */
+    overflow: hidden;
+    padding: 14px;
+    background: linear-gradient(180deg, var(--suave-claro), #fff);
+  }
+  .lista :global(.foto img) {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+  .lista :global(.info) {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 4px;
+    padding: 12px 14px 14px;
+  }
+  .lista :global(h2) {
+    margin: 0;
+    font-size: clamp(14px, 1.1vw, 17px);
+    line-height: 1.3;
+  }
+  .lista :global(h2 a) {
+    color: var(--primario);
+    text-decoration: none;
+  }
+  .lista :global(.precio) {
+    margin: 2px 0 0;
+    font-family: var(--font-alt);
+    font-weight: 800;
+    font-size: clamp(18px, 1.4vw, 22px);
+    color: var(--primario);
+  }
+  .lista :global(.stock) {
+    margin: 0;
+    font-size: 13px;
+    color: var(--exito);
+  }
+  .lista :global(.stock.agotado) {
+    color: var(--acento);
+  }
+  .lista :global(.botones) {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: auto;
+    padding-top: 10px;
+  }
+  .lista :global(.btn) {
+    width: 100%;
+    padding: 11px 10px;
+    font-size: 15px;
+  }
+  .lista :global(.btn:disabled) {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+  .lista :global(.quitar) {
+    border: 0;
+    background: none;
+    color: var(--texto);
+    font-size: 13px;
+    text-decoration: underline;
+    cursor: pointer;
+  }
+
+  .vacio {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    max-width: 420px;
+    margin: 8vh auto 0;
+    text-align: center;
+    color: var(--texto);
+  }
+  .vacio[hidden] {
+    display: none;
+  }
+  .vacio p {
+    margin: 0;
+    line-height: 1.6;
+  }
+  .vacio-icono {
+    font-size: 48px;
+    color: var(--favorito);
+  }
+  .vacio-titulo {
+    font-weight: 700;
+    font-size: 20px;
+    color: var(--primario);
+  }
+  .vacio .btn {
+    margin-top: 16px;
+  }
+
+  .aviso {
+    position: fixed;
+    left: 50%;
+    bottom: 24px;
+    z-index: 50;
+    max-width: min(420px, 100% - 32px);
+    margin: 0;
+    padding: 12px 18px;
+    border-radius: 12px;
+    background: var(--primario);
+    color: #fff;
+    font-size: 15px;
+    text-align: center;
+    opacity: 0;
+    transform: translate(-50%, 12px);
+    transition:
+      opacity 0.2s,
+      transform 0.2s;
+    pointer-events: none;
+  }
+  .aviso.visible {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+</style>

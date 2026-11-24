@@ -1,0 +1,77 @@
+# Un solo dominio, sin subdominio: Traefik (el enrutador de Dokploy) reparte por ruta.
+#   - WordPress + WooCommerce (solo backend): admin, API, fotos, login y avisos de pago.
+#   - Astro: todo lo demás (el sitio que ve el cliente).
+# WordPress NO se mueve ni se toca su base de datos: sigue en la raíz con sus mismas URLs.
+# Para volver atrás, quitar el router «sitio-astro» y WordPress vuelve a mostrar todo.
+#
+# Dónde va: Dokploy → Traefik → File System → dynamic/ (un archivo .yml nuevo), o en la app de
+# WordPress → Advanced → Traefik. Reemplazar:
+#   midominio.com            → el dominio (p. ej. viarsacr.com)
+#   http://WORDPRESS:80      → nombre interno del contenedor de WordPress en la red dokploy-network
+#   http://ASTRO:80          → «App Name» de la app de Astro en Dokploy (mismo criterio)
+#   letsencrypt              → el certResolver que use su Dokploy (por defecto «letsencrypt»)
+# Si el dominio pasa por Cloudflare con proxy (nube naranja), el certificado lo puede dar Cloudflare
+# («Full (strict)» con un certificado de origen) y aquí basta «tls: {}».
+#
+# IMPORTANTE: quitar el dominio de la pestaña «Domains» de la app de WordPress (y no ponerlo en la de
+# Astro): esos dominios crean routers «Host(midominio.com)» con prioridad mayor que 1 que le
+# ganarían al de Astro. Este archivo pasa a ser el único que maneja el dominio.
+#
+# Antes de cambiar el dominio real, probar con un dominio de prueba en la regla Host() y verificar con
+# scripts/verificar_rutas.py del skill (dice quién respondió cada ruta).
+
+http:
+  routers:
+    # Prioridad alta: estas rutas siempre van a WordPress.
+    wordpress-backend:
+      rule: >-
+        Host(`midominio.com`) && (
+          PathPrefix(`/wp-admin`) || PathPrefix(`/wp-json`) || PathPrefix(`/wp-content`) ||
+          PathPrefix(`/wp-includes`) || Path(`/wp-login.php`) || Path(`/wp-cron.php`) ||
+          Path(`/wp-comments-post.php`) || Path(`/xmlrpc.php`) ||
+          PathPrefix(`/wc-api`) || QueryRegexp(`wc-api`, `.+`) ||
+          PathPrefix(`/finalizar-compra`) || PathPrefix(`/checkout`) ||
+          PathPrefix(`/mi-cuenta`) || PathPrefix(`/my-account`) ||
+          QueryRegexp(`preview`, `true`)
+        )
+      # /wc-api y ?wc-api=: avisos de las pasarelas de pago (IPN, webhooks).
+      # /finalizar-compra (o /checkout): página de pago y «pedido recibido» al volver del banco.
+      # /mi-cuenta (o /my-account): enlaces de los correos de WooCommerce (contraseña, pedidos).
+      #   Ajustar a los slugs reales: WooCommerce → Ajustes → Avanzado → Configuración de páginas.
+      priority: 1000
+      entryPoints: [websecure]
+      service: wordpress-backend
+      tls:
+        certResolver: letsencrypt
+
+    # Prioridad baja: todo lo demás es el sitio en Astro.
+    sitio-astro:
+      rule: Host(`midominio.com`)
+      priority: 1
+      entryPoints: [websecure]
+      service: sitio-astro
+      tls:
+        certResolver: letsencrypt
+
+    # http → https
+    sitio-http:
+      rule: Host(`midominio.com`)
+      entryPoints: [web]
+      middlewares: [a-https]
+      service: sitio-astro
+
+  middlewares:
+    a-https:
+      redirectScheme:
+        scheme: https
+        permanent: true
+
+  services:
+    wordpress-backend:
+      loadBalancer:
+        servers:
+          - url: http://WORDPRESS:80
+    sitio-astro:
+      loadBalancer:
+        servers:
+          - url: http://ASTRO:80

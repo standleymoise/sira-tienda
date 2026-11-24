@@ -1,0 +1,184 @@
+---
+// Layout de todas las páginas: colores, fuentes, estilos base y SEO salen de tienda.config.ts.
+import { Font } from 'astro:assets';
+import InstalarApp from '../components/InstalarApp.astro';
+import { tienda } from '../../tienda.config';
+import { url } from '../data/rutas';
+import { tiendaUrl } from '../data/tienda';
+
+interface Props {
+  title: string;
+  description?: string;
+  /** Las páginas personales (favoritos, cuenta) no se indexan. */
+  noindex?: boolean;
+  /** Imagen al compartir el enlace: URL absoluta o ruta de /public. */
+  imagen?: string;
+  /** Tipo de página para Open Graph. */
+  tipo?: 'website' | 'product';
+  /** Datos estructurados (schema.org) de la página: un objeto o una lista. */
+  jsonLd?: object | object[];
+}
+const { title, description = tienda.marca.descripcion, noindex = false, imagen, tipo = 'website', jsonLd } = Astro.props;
+const c = tienda.colores;
+
+const variables = [
+  `--primario:${c.primario}`,
+  `--secundario:${c.secundario}`,
+  `--acento:${c.acento}`,
+  `--acento-oscuro:${c.acentoOscuro}`,
+  `--texto:${c.texto}`,
+  `--borde:${c.borde}`,
+  `--suave:${c.suave}`,
+  `--exito:${c.exito}`,
+  `--favorito:${c.favorito}`,
+  // Las fuentes las define <Font /> (ver «fonts» en astro.config.mjs).
+  `--font-sans:var(--fuente-texto)`,
+  `--font-alt:var(--fuente-titulos)`,
+].join(';');
+// Dominio oficial (SITE_URL) y URL canónica.
+const hostOficial = Astro.site?.host ?? '';
+const canonica = new URL(Astro.url.pathname, Astro.site ?? Astro.url).href;
+const absoluta = (x: string) => new URL(x.startsWith('http') ? x : url(x), Astro.site ?? Astro.url).href;
+const imagenOg = imagen || tienda.seo.imagenCompartir;
+// JSON dentro de <script>: «<» escapado para que un texto con «</script>» no rompa la página.
+const ld = jsonLd ? JSON.stringify(jsonLd).replaceAll('<', '\\u003c') : '';
+---
+<!doctype html>
+<html lang={tienda.pais.locale.split('-')[0]} style={variables}>
+  <head>
+    <script is:inline define:vars={{ hostOficial }}>
+      // Quien entra por www. va al dominio oficial: el CORS de la tienda solo acepta ese.
+      if (hostOficial && location.host === 'www.' + hostOficial) {
+        location.replace(location.protocol + '//' + hostOficial + location.pathname + location.search + location.hash);
+      }
+    </script>
+    <meta charset="utf-8" />
+    <link rel="canonical" href={canonica} />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <link rel="icon" type="image/svg+xml" href={url('/favicon.svg')} />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    {noindex && <meta name="robots" content="noindex" />}
+    <meta property="og:type" content={tipo} />
+    <meta property="og:site_name" content={tienda.marca.nombre} />
+    <meta property="og:locale" content={tienda.pais.locale.replace('-', '_')} />
+    <meta property="og:url" content={canonica} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    {imagenOg && <meta property="og:image" content={absoluta(imagenOg)} />}
+    <meta name="twitter:card" content={imagenOg ? 'summary_large_image' : 'summary'} />
+    <meta name="theme-color" content={c.primario} />
+    {/* Abre la conexión con WooCommerce mientras carga la página: el carrito responde antes. */}
+    {tiendaUrl && <link rel="preconnect" href={tiendaUrl} crossorigin />}
+    <link rel="sitemap" href={url('/sitemap-index.xml')} />
+    <link rel="manifest" href={url('/manifest.webmanifest')} />
+    <link rel="apple-touch-icon" href={url('/iconos/apple-180.png')} />
+    <meta name="apple-mobile-web-app-title" content={tienda.app.nombreCorto || tienda.marca.nombre} />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <Font cssVariable="--fuente-texto" preload={[{ weight: tienda.fuentes.texto.pesos[0] }]} />
+    <Font cssVariable="--fuente-titulos" />
+    {ld && <script type="application/ld+json" set:html={ld} />}
+  </head>
+  <body>
+    <slot />
+    <InstalarApp
+      nombre={tienda.app.nombreCorto || tienda.marca.nombre}
+      icono={url('/iconos/icono-192.png')}
+      color={c.acento}
+      clave={`${tienda.prefijo}-instalar-cerrado`}
+    />
+    {import.meta.env.PROD && (
+      <script is:inline define:vars={{ sw: url('/sw.js'), scope: url('/') }}>
+        // App instalable: el service worker guarda el sitio para abrirlo rápido y sin conexión.
+        if ('serviceWorker' in navigator) {
+          addEventListener('load', () => navigator.serviceWorker.register(sw, { scope }).catch(() => {}));
+        }
+      </script>
+    )}
+  </body>
+</html>
+
+<style is:global>
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+  html {
+    -webkit-text-size-adjust: 100%;
+    /* Mezcla del color suave con blanco, para fondos de fotos y tarjetas */
+    --suave-claro: color-mix(in srgb, var(--suave) 70%, #fff);
+  }
+  body {
+    margin: 0;
+    font-family: var(--font-sans);
+    color: var(--texto);
+    overflow-x: hidden;
+    background:
+      radial-gradient(120% 55% at 50% 0%, var(--suave) 0%, transparent 70%),
+      linear-gradient(180deg, color-mix(in srgb, var(--suave) 40%, #fff), #fff);
+    min-height: 100dvh;
+  }
+  img {
+    display: block;
+    max-width: 100%;
+    height: auto;
+  }
+  a {
+    color: inherit;
+  }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-alt);
+    font-weight: 600;
+    font-size: 17px;
+    line-height: 1.2;
+    color: #fff;
+    background: var(--acento);
+    border: 1px solid var(--acento);
+    border-radius: 999px;
+    padding: 15px 32px;
+    text-decoration: none;
+    cursor: pointer;
+    transition:
+      background-color 0.2s,
+      border-color 0.2s;
+  }
+  .btn:hover {
+    background: var(--acento-oscuro);
+    border-color: var(--acento-oscuro);
+  }
+  .btn-borde {
+    background: #fff;
+    color: var(--acento);
+  }
+  .btn-borde:hover {
+    background: #fff;
+    color: var(--acento-oscuro);
+  }
+  :focus-visible {
+    outline: 3px solid color-mix(in srgb, var(--acento) 45%, #fff);
+    outline-offset: 2px;
+  }
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      transition-duration: 0.01ms !important;
+      animation-duration: 0.01ms !important;
+    }
+  }
+</style>

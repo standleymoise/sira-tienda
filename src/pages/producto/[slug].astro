@@ -1,0 +1,318 @@
+---
+// Página propia de cada producto: /producto/<slug>/ (el mismo slug que en WooCommerce).
+// Es la que Google indexa y la que se comparte: título, descripción, foto, precio y datos
+// estructurados (Product + Offer + BreadcrumbList) quedan en el HTML desde la compilación.
+// Precio y stock se vuelven a leer en vivo al abrirla; el botón usa el mismo carrito que la tienda.
+import { Image } from 'astro:assets';
+import Base from '../../layouts/Base.astro';
+import Logo from '../../components/Logo.astro';
+import { getProductos, storeApiUrl, type Producto } from '../../data/tienda';
+import { rutas } from '../../data/rutas';
+import { tienda } from '../../../tienda.config';
+
+export async function getStaticPaths() {
+  return (await getProductos()).map((p) => ({ params: { slug: p.slug }, props: { p } }));
+}
+
+const { p } = Astro.props as { p: Producto };
+const sitio = Astro.site ?? Astro.url;
+const abs = (ruta: string) => new URL(ruta, sitio).href;
+const paginaUrl = abs(rutas.producto(p.slug));
+
+// Descripción para Google: el resumen, o el inicio de la descripción (≈155 caracteres).
+const textoBase = p.resumen || p.descripcion.join(' ') || tienda.marca.descripcion;
+const descripcion = textoBase.length > 155 ? `${textoBase.slice(0, 152).replace(/\s+\S*$/, '')}…` : textoBase;
+
+const jsonLd = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    name: p.nombre,
+    description: textoBase,
+    sku: p.sku || undefined,
+    image: p.imagenes.map((i) => i.src),
+    url: paginaUrl,
+    brand: { '@type': 'Brand', name: tienda.marca.nombre },
+    category: p.categorias[0],
+    offers: {
+      '@type': 'Offer',
+      url: paginaUrl,
+      price: p.precioNumero,
+      priceCurrency: p.moneda,
+      availability: p.enStock ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+      itemCondition: 'https://schema.org/NewCondition',
+    },
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Inicio', item: abs(rutas.inicio) },
+      { '@type': 'ListItem', position: 2, name: 'Productos', item: abs(rutas.productos) },
+      { '@type': 'ListItem', position: 3, name: p.nombre, item: paginaUrl },
+    ],
+  },
+];
+const [principal, ...demas] = p.imagenes;
+---
+<Base
+  title={`${p.nombre} | ${tienda.marca.nombre}`}
+  description={descripcion}
+  imagen={principal?.src}
+  tipo="product"
+  jsonLd={jsonLd}
+>
+  <main class="ficha" data-api={storeApiUrl} data-id={p.id}>
+    <header class="cabecera">
+      <a class="volver" href={rutas.inicio}>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" /></svg>
+        <span>Tienda</span>
+      </a>
+      <Logo alto={36} />
+      <a class="btn-redondo" href={`${rutas.inicio}#carrito`}>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2l2.4 10.2a1.5 1.5 0 0 0 1.5 1.1h8.6a1.5 1.5 0 0 0 1.4-1.1L21 8H6.2" /><circle cx="9.5" cy="19.5" r="1.4" /><circle cx="17" cy="19.5" r="1.4" /></svg>
+        <span class="sr-only">Ver carrito</span>
+      </a>
+    </header>
+
+    <nav class="migas" aria-label="Ruta">
+      <a href={rutas.inicio}>Inicio</a> › <a href={rutas.productos}>Productos</a> ›{' '}
+      <span aria-current="page">{p.nombre}</span>
+    </nav>
+
+    <div class="cuerpo">
+      <div class="fotos">
+        {principal && (
+          <Image
+            class="foto-principal"
+            src={principal.src}
+            alt={principal.alt}
+            inferSize
+            format="webp"
+            widths={[480, 720, 1080]}
+            sizes="(max-width: 760px) 92vw, 520px"
+            loading="eager"
+            fetchpriority="high"
+          />
+        )}
+        {demas.length > 0 && (
+          <div class="miniaturas">
+            {demas.map((img) => (
+              <Image src={img.src} alt={img.alt} inferSize format="webp" widths={[240, 480]} sizes="160px" />
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div class="datos">
+        <h1>{p.nombre}</h1>
+        <p class="precio">
+          <span data-precio>{p.precio}</span>
+          {p.precioAntes && <s class="antes">{p.precioAntes}</s>}
+        </p>
+        <p class={p.enStock ? 'stock' : 'stock agotado'} data-stock>{p.stockTexto}</p>
+        <p class="destacado" data-destacado hidden={!p.destacado}>{p.destacado}</p>
+        {p.resumen && <p class="resumen">{p.resumen}</p>}
+        <div class="botones">
+          <button class="btn" type="button" data-agregar disabled={!p.enStock}>Agregar al carrito</button>
+          <a class="btn btn-borde" href={`${rutas.inicio}#carrito`}>Ver carrito</a>
+        </div>
+        <p class="aviso" data-aviso role="status" aria-live="polite"></p>
+        {p.descripcion.length > 0 && (
+          <section class="descripcion">
+            <h2>Descripción</h2>
+            {p.descripcion.map((d) => <p>{d}</p>)}
+          </section>
+        )}
+      </div>
+    </div>
+  </main>
+</Base>
+
+<script>
+  import { crearCliente, formato, destacadoDe, type ProductoApi } from '../../scripts/tienda-api';
+
+  const main = document.querySelector<HTMLElement>('.ficha')!;
+  const API = main.dataset.api!;
+  const id = Number(main.dataset.id);
+  const cliente = crearCliente(API);
+  const boton = main.querySelector<HTMLButtonElement>('[data-agregar]')!;
+  const aviso = main.querySelector<HTMLElement>('[data-aviso]')!;
+
+  // Precio y stock en vivo (el HTML trae los del último build).
+  cliente
+    .api<ProductoApi>(`/products/${id}`)
+    .then((p) => {
+      main.querySelector('[data-precio]')!.textContent = formato(p.prices.price, p.prices);
+      const stock = main.querySelector<HTMLElement>('[data-stock]')!;
+      const hay = p.is_purchasable && p.is_in_stock;
+      stock.textContent = p.stock_availability?.text || (hay ? 'Disponible' : 'Agotado');
+      stock.classList.toggle('agotado', !hay);
+      boton.disabled = !hay;
+      const dest = main.querySelector<HTMLElement>('[data-destacado]')!;
+      dest.textContent = destacadoDe(p);
+      dest.hidden = !dest.textContent;
+    })
+    .catch(() => {});
+
+  boton.addEventListener('click', async () => {
+    boton.disabled = true;
+    aviso.textContent = 'Agregando…';
+    try {
+      const c = await cliente.agregar(id);
+      aviso.textContent = `Listo: ${c.items_count} ${c.items_count === 1 ? 'producto' : 'productos'} en su carrito.`;
+    } catch (e) {
+      aviso.textContent = `No se pudo agregar: ${(e as Error).message}`;
+    } finally {
+      boton.disabled = false;
+    }
+  });
+</script>
+
+<style>
+  .ficha {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 12px 16px 48px;
+  }
+  .cabecera {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    min-height: 52px;
+  }
+  .volver {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--primario);
+    font-weight: 600;
+    text-decoration: none;
+  }
+  .volver svg,
+  .btn-redondo svg {
+    width: 22px;
+    height: 22px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .btn-redondo {
+    justify-self: end;
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: #fff;
+    color: var(--secundario);
+    box-shadow: 0 4px 14px rgb(0 0 0 / 0.08);
+  }
+  .migas {
+    margin: 10px 0 18px;
+    font-size: 14px;
+  }
+  .migas a {
+    color: var(--secundario);
+  }
+  .cuerpo {
+    display: grid;
+    gap: 28px;
+  }
+  @media (min-width: 760px) {
+    .cuerpo {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      align-items: start;
+    }
+  }
+  .fotos :global(img) {
+    width: 100%;
+    height: auto;
+    border-radius: 18px;
+    background: var(--suave-claro);
+  }
+  .foto-principal {
+    aspect-ratio: 1;
+    object-fit: contain;
+  }
+  .miniaturas {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+    gap: 10px;
+    margin-top: 10px;
+  }
+  .miniaturas :global(img) {
+    aspect-ratio: 1;
+    object-fit: contain;
+  }
+  h1 {
+    margin: 0 0 8px;
+    font-family: var(--font-alt);
+    color: var(--primario);
+    line-height: 1.15;
+  }
+  .precio {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin: 0;
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--primario);
+  }
+  .antes {
+    font-size: 17px;
+    font-weight: 400;
+    color: var(--texto);
+  }
+  .stock {
+    margin: 6px 0 0;
+    color: var(--exito);
+    font-weight: 600;
+  }
+  .stock.agotado {
+    color: var(--acento);
+  }
+  .resumen {
+    line-height: 1.6;
+  }
+  .botones {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 18px 0 6px;
+  }
+  .btn[disabled] {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  .aviso {
+    min-height: 1.4em;
+    margin: 0;
+    font-size: 14px;
+  }
+  .descripcion {
+    margin-top: 20px;
+    line-height: 1.65;
+  }
+  .descripcion h2 {
+    font-size: 19px;
+    color: var(--primario);
+  }
+  /* Texto destacado del plugin de ejemplo wordpress/mu-plugins/tienda-extras.php */
+  .destacado {
+    display: inline-block;
+    margin: 8px 0 0;
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--secundario) 16%, transparent);
+    color: var(--primario);
+    font-size: 13px;
+    font-weight: 700;
+  }
+  .destacado[hidden] {
+    display: none;
+  }
+</style>

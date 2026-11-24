@@ -1,0 +1,108 @@
+---
+// Tarjetas de testimonios (colección «testimonios», que viene de WordPress con CPT UI + ACF).
+// No dibuja nada si la lista está vacía.
+import { Image } from 'astro:assets';
+import type { CollectionEntry } from 'astro:content';
+
+interface Props {
+  lista: CollectionEntry<'testimonios'>[];
+  /** Nivel del título de cada tarjeta para respetar el orden de la página. */
+  titulo?: 'h2' | 'h3';
+}
+const { lista, titulo: Titulo = 'h3' } = Astro.props;
+---
+{lista.length > 0 && (
+  <ul class="testimonios">
+    {lista.map(({ data }) => (
+      <li>
+        <figure>
+          {data.estrellas && (
+            <p class="estrellas" aria-label={`${data.estrellas} de 5 estrellas`}>
+              <span aria-hidden="true">{'★'.repeat(data.estrellas)}{'☆'.repeat(5 - data.estrellas)}</span>
+            </p>
+          )}
+          <blockquote>
+            {data.texto.split(/\n{2,}/).map((parrafo) => <p>{parrafo}</p>)}
+          </blockquote>
+          <figcaption>
+            {data.foto && (
+              <Image
+                src={data.foto.url}
+                alt={data.foto.alt}
+                inferSize
+                format="webp"
+                widths={[56, 112]}
+                sizes="56px"
+                loading="lazy"
+              />
+            )}
+            <span>
+              <Titulo class="nombre">{data.nombre}</Titulo>
+              {data.cargo && <span class="cargo">{data.cargo}</span>}
+            </span>
+          </figcaption>
+        </figure>
+      </li>
+    ))}
+  </ul>
+)}
+
+<style>
+  .testimonios {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
+    gap: 16px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  figure {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    height: 100%;
+    margin: 0;
+    padding: 20px;
+    border: 1px solid var(--borde);
+    border-radius: 18px;
+    background: #fff;
+  }
+  .estrellas {
+    margin: 0;
+    color: var(--favorito);
+    font-size: 18px;
+    letter-spacing: 2px;
+  }
+  blockquote {
+    flex: 1;
+    margin: 0;
+    line-height: 1.6;
+  }
+  blockquote p {
+    margin: 0 0 8px;
+  }
+  blockquote p:last-child {
+    margin: 0;
+  }
+  figcaption {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  figcaption img {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    object-fit: cover;
+  }
+  .nombre {
+    display: block;
+    margin: 0;
+    font-size: 16px;
+    color: var(--primario);
+  }
+  .cargo {
+    font-size: 14px;
+    color: var(--texto);
+  }
+</style>

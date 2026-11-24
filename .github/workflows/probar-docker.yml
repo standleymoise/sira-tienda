@@ -1,0 +1,53 @@
+name: Probar la imagen Docker
+
+# Compila la imagen de Dokploy (Dockerfile + deploy/nginx.conf), la levanta y revisa las respuestas.
+# Se ejecuta a mano (Actions → Run workflow) o cuando cambian esos archivos.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tienda:
+        description: 'URL del WordPress + WooCommerce para compilar (vacío = sin tienda)'
+        required: false
+        default: ''
+  push:
+    paths: ['Dockerfile', 'deploy/**', '.dockerignore', '.github/workflows/probar-docker.yml']
+
+jobs:
+  probar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compilar la imagen
+        run: |
+          docker build -t sitio \
+            --build-arg SITE_URL=https://ejemplo.com \
+            --build-arg PUBLIC_TIENDA_URL="${{ inputs.tienda || vars.PUBLIC_TIENDA_URL }}" \
+            .
+
+      - name: Levantar y revisar
+        run: |
+          docker run -d --name sitio -p 8080:80 sitio
+          sleep 2
+          falla=0
+          revisar() { # ruta, código esperado, texto que debe aparecer en los encabezados (opcional)
+            enc=$(curl -s -o /dev/null -D - "http://localhost:8080$1")
+            cod=$(echo "$enc" | head -1 | awk '{print $2}')
+            if [ "$cod" != "$2" ]; then echo "FALLA $1: $cod (esperaba $2)"; falla=1; return; fi
+            if [ -n "$3" ] && ! echo "$enc" | grep -qi "$3"; then echo "FALLA $1: falta «$3»"; echo "$enc"; falla=1; return; fi
+            echo "ok    $1 → $cod ${3:+($3)}"
+          }
+          revisar /                       200 'cache-control: no-cache'
+          revisar /productos              301 'location: /productos/'
+          revisar /productos/             200 'cache-control: no-cache'
+          revisar /sw.js                  200 'cache-control: no-cache'
+          revisar /manifest.webmanifest   200 'content-type: application/manifest+json'
+          revisar /favicon.svg            200 'max-age=86400'
+          revisar /no-existe              404 ''
+          asset=$(curl -s http://localhost:8080/ | grep -o '/_astro/[^"]*\.css' | head -1)
+          revisar "$asset"                200 'immutable'
+          curl -s http://localhost:8080/no-existe | grep -qi '<html' && echo "ok    404 usa la página propia" || { echo "FALLA 404 sin página propia"; falla=1; }
+          curl -s -H 'Accept-Encoding: gzip' -D - -o /dev/null "http://localhost:8080$asset" | grep -qi 'content-encoding: gzip' && echo "ok    gzip" || { echo "FALLA sin gzip"; falla=1; }
+          docker logs sitio 2>&1 | tail -5
+          exit $falla

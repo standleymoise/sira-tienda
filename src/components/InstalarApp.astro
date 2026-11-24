@@ -1,0 +1,210 @@
+---
+// Botón «Instalar app» (PWA).
+//
+// - Aviso flotante que aparece a los pocos segundos, solo si el navegador permite instalar
+//   (Android/Chrome/Edge: evento beforeinstallprompt) o en iPhone/iPad (Safari no tiene ese evento:
+//   el botón muestra cómo hacerlo con Compartir → «Agregar a inicio»).
+// - No aparece si la app ya está instalada (se abrió desde la pantalla de inicio) ni durante 14 días
+//   después de cerrarlo con ×.
+// - Cualquier elemento con data-instalar-app en la página (p. ej. en «Mi cuenta») hace lo mismo;
+//   conviene ponerlo con el atributo hidden: se muestra solo cuando se puede instalar.
+interface Props {
+  nombre: string;
+  /** URL del ícono (PNG). */
+  icono: string;
+  /** Color del botón. */
+  color: string;
+  /** Clave de localStorage para recordar que se cerró el aviso. */
+  clave: string;
+}
+const { nombre, icono, color, clave } = Astro.props;
+---
+<div
+  class="instalar-app"
+  data-banner-app
+  data-clave={clave}
+  hidden
+  style={`--ia-color:${color}`}
+  role="dialog"
+  aria-label={`Instalar la app de ${nombre}`}
+>
+  <img src={icono} alt="" width="44" height="44" />
+  <div class="ia-texto">
+    <strong>Instale la app de {nombre}</strong>
+    <span data-ia-detalle>Ábrala desde su pantalla de inicio, más rápido y sin conexión.</span>
+  </div>
+  <button type="button" class="ia-instalar" data-instalar-app>Instalar</button>
+  <button type="button" class="ia-cerrar" data-ia-cerrar aria-label="Cerrar">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+  </button>
+</div>
+
+<script>
+  type AvisoInstalar = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: string }> };
+
+  const banner = document.querySelector<HTMLElement>('[data-banner-app]')!;
+  const detalle = banner.querySelector<HTMLElement>('[data-ia-detalle]')!;
+  const CLAVE = banner.dataset.clave!;
+  const DIAS = 14;
+
+  const instalada =
+    matchMedia('(display-mode: standalone)').matches ||
+    (navigator as Navigator & { standalone?: boolean }).standalone === true;
+  // iPadOS se presenta como Mac: se reconoce por la pantalla táctil.
+  const ios =
+    /iphone|ipad|ipod/i.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+  let aviso: AvisoInstalar | null = null;
+
+  const cerradoHacePoco = () => {
+    try {
+      return Date.now() - Number(localStorage.getItem(CLAVE) || 0) < DIAS * 864e5;
+    } catch {
+      return false;
+    }
+  };
+  const botones = (visibles: boolean) =>
+    document.querySelectorAll<HTMLElement>('[data-instalar-app]').forEach((b) => (b.hidden = !visibles));
+  const ocultarTodo = () => {
+    banner.hidden = true;
+    botones(false);
+  };
+  const ofrecer = () => {
+    botones(true);
+    if (!cerradoHacePoco()) setTimeout(() => (banner.hidden = false), 4000);
+  };
+
+  if (!instalada) {
+    if (ios) {
+      banner.querySelector<HTMLElement>('.ia-instalar')!.textContent = 'Cómo';
+      ofrecer();
+    }
+    addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault(); // el aviso propio reemplaza al del navegador
+      aviso = e as AvisoInstalar;
+      ofrecer();
+    });
+  } else {
+    ocultarTodo();
+  }
+  addEventListener('appinstalled', ocultarTodo);
+
+  document.addEventListener('click', async (e) => {
+    if (!(e.target as Element).closest('[data-instalar-app]')) return;
+    if (aviso) {
+      await aviso.prompt();
+      const { outcome } = await aviso.userChoice;
+      aviso = null; // el navegador solo deja usarlo una vez
+      if (outcome === 'accepted') ocultarTodo();
+    } else if (ios) {
+      banner.hidden = false;
+      banner.classList.add('ios');
+      detalle.innerHTML =
+        'Toque <b>Compartir</b> <svg class="ia-compartir" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M8 7l4-4 4 4M5 11v9h14v-9"/></svg> y luego <b>«Agregar a inicio»</b>.';
+    }
+  });
+
+  banner.querySelector('[data-ia-cerrar]')!.addEventListener('click', () => {
+    banner.hidden = true;
+    try {
+      localStorage.setItem(CLAVE, String(Date.now()));
+    } catch {
+      /* sin almacenamiento: se vuelve a ofrecer en la próxima visita */
+    }
+  });
+</script>
+
+<style>
+  .instalar-app {
+    position: fixed;
+    z-index: 1000;
+    left: 50%;
+    top: max(10px, env(safe-area-inset-top));
+    transform: translateX(-50%);
+    display: grid;
+    grid-template-columns: auto 1fr auto auto;
+    align-items: center;
+    gap: 10px;
+    width: min(440px, calc(100% - 20px));
+    padding: 10px 8px 10px 10px;
+    border-radius: 18px;
+    background: #fff;
+    color: #2b3441;
+    font-size: 14px;
+    line-height: 1.35;
+    box-shadow: 0 10px 34px rgb(0 0 0 / 0.18);
+    animation: ia-entrar 0.35s ease-out;
+  }
+  .instalar-app[hidden] {
+    display: none;
+  }
+  @keyframes ia-entrar {
+    from {
+      opacity: 0;
+      transform: translate(-50%, -12px);
+    }
+  }
+  .instalar-app img {
+    width: 44px;
+    height: 44px;
+    border-radius: 11px;
+  }
+  .ia-texto {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+  }
+  .ia-texto span {
+    color: #5b6573;
+    font-size: 13px;
+  }
+  .ia-texto :global(.ia-compartir) {
+    width: 16px;
+    height: 16px;
+    vertical-align: -3px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .ia-instalar {
+    padding: 9px 16px;
+    border: 0;
+    border-radius: 999px;
+    background: var(--ia-color);
+    color: #fff;
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .instalar-app.ios .ia-instalar {
+    display: none;
+  }
+  .ia-cerrar {
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: none;
+    color: #8a93a0;
+    cursor: pointer;
+  }
+  .ia-cerrar svg {
+    width: 18px;
+    height: 18px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.2;
+    stroke-linecap: round;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .instalar-app {
+      animation: none;
+    }
+  }
+</style>

@@ -1,0 +1,39 @@
+---
+// Logo de la marca: la imagen de tienda.config.ts (marca.logo) o, si no hay, el nombre como texto.
+import { tienda } from '../../tienda.config';
+import { rutas, url } from '../data/rutas';
+
+interface Props {
+  /** Alto máximo del logo en px. */
+  alto?: number;
+}
+const { alto = 40 } = Astro.props;
+const { nombre, logo } = tienda.marca;
+---
+<a class="logo" href={rutas.inicio} aria-label={`${nombre}, inicio`} style={`--alto:${alto}px`}>
+  {logo ? <img src={url(logo)} alt="" /> : <span aria-hidden="true">{nombre}</span>}
+</a>
+
+<style>
+  .logo {
+    display: inline-flex;
+    align-items: center;
+    height: var(--alto);
+    text-decoration: none;
+  }
+  img {
+    height: 100%;
+    width: auto;
+    max-width: 180px;
+    object-fit: contain;
+  }
+  span {
+    font-family: var(--font-alt);
+    font-weight: 800;
+    font-size: calc(var(--alto) * 0.62);
+    line-height: 1;
+    letter-spacing: -0.01em;
+    color: var(--primario);
+    white-space: nowrap;
+  }
+</style>
