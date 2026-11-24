@@ -22,9 +22,15 @@ const rutas = rutasPara(lang);
 
 // id de producto o de variación → ficha en este sitio (los enlaces del carrito van a WordPress).
 const enlaces: Record<number, string> = {};
+// En inglés: id de producto o de variación → nombre traducido (ACF). WooCommerce los da en español.
+const nombres: Record<number, string> = {};
 for (const p of await getProductos()) {
   enlaces[p.id] = rutas.producto(p.slug);
   for (const v of p.variaciones) enlaces[v.id] = rutas.producto(p.slug);
+  if (lang === 'en' && p.en.nombre) {
+    nombres[p.id] = p.en.nombre;
+    for (const v of p.variaciones) nombres[v.id] = p.en.nombre;
+  }
 }
 
 // Códigos de provincia que acepta WooCommerce para Costa Rica (SJ, AL, CG…). tienda.config.ts
@@ -256,6 +262,7 @@ const tScript = {
     data-compra
     data-api={storeApiUrl}
     data-enlaces={JSON.stringify(enlaces)}
+    data-nombres={JSON.stringify(nombres)}
     data-provincias={JSON.stringify(provincias.map(([wc, , iso]) => [iso, wc]))}
     data-basurero={url('/img/icono-basurero.svg')}
     data-textos={JSON.stringify(tScript)}
@@ -483,6 +490,7 @@ const tScript = {
   function iniciar(raiz: HTMLElement) {
     const cliente = crearCliente(raiz.dataset.api!);
     const enlaces: Record<string, string> = JSON.parse(raiz.dataset.enlaces || '{}');
+    const nombresTraducidos: Record<string, string> = JSON.parse(raiz.dataset.nombres || '{}');
     const isoAWc = Object.fromEntries(JSON.parse(raiz.dataset.provincias || '[]')) as Record<string, string>;
     const $ = <T extends HTMLElement = HTMLElement>(sel: string) => raiz.querySelector<T>(sel)!;
     const form = $<HTMLFormElement>('[data-form]');
@@ -530,7 +538,7 @@ const tScript = {
       cuerpo.replaceChildren();
       lineas.replaceChildren();
       for (const it of c.items) {
-        const nombre = decodificar(it.name);
+        const nombre = nombresTraducidos[it.id] || decodificar(it.name);
         const opciones = (it.variation ?? []).map((v) => `${decodificar(v.attribute)}: ${decodificar(v.value)}`).join(' · ');
         const lineaTotal = suma(it.totals.line_total, it.totals.line_total_tax);
         const unitario = it.prices?.price ?? String(Math.round(Number(lineaTotal) / Math.max(1, it.quantity)));

@@ -11,7 +11,7 @@
 import { Image } from 'astro:assets';
 import PaginaSira from '../../layouts/PaginaSira.astro';
 import TarjetaProducto from '../../components/sira/TarjetaProducto.astro';
-import { getProductos, storeApiUrl, type Producto } from '../../data/tienda';
+import { getProductos, storeApiUrl, enIdioma, type Producto } from '../../data/tienda';
 import { rutasPara } from '../../data/rutas';
 import { locale, type Idioma } from '../../i18n/idiomas';
 import { tienda } from '../../../tienda.config';
@@ -21,7 +21,9 @@ export async function getStaticPaths() {
   return todos.map((p) => ({ params: { slug: p.slug }, props: { p, todos } }));
 }
 
-const { p, todos, lang = 'es' } = Astro.props as { p: Producto; todos: Producto[]; lang?: Idioma };
+const { p: original, todos, lang = 'es' } = Astro.props as { p: Producto; todos: Producto[]; lang?: Idioma };
+// Nombre y descripción en el idioma de la página (inglés desde los campos ACF si existen).
+const p = enIdioma(original, lang);
 const rutas = rutasPara(lang);
 
 // Nombres de atributos de WooCommerce (vienen en español) con equivalente en inglés; los demás

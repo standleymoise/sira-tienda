@@ -51,6 +51,11 @@ export interface Producto {
    * Vacío si el plugin no está instalado o el producto no lo tiene.
    */
   destacado: string;
+  /**
+   * Textos en inglés del producto (campos ACF «Producto en inglés»: nombre_en, resumen_en,
+   * descripcion_en). Vacíos si no se cargaron; entonces la versión en inglés usa el español.
+   */
+  en: { nombre: string; resumen: string; descripcion: string[] };
 }
 
 interface StoreApiProducto {
@@ -137,7 +142,53 @@ const aProducto = (p: StoreApiProducto): Producto => ({
   imagenes: p.images.map((i) => ({ src: i.src, alt: i.alt || p.name })),
   fichaUrl: p.permalink,
   destacado: p.extensions?.['tienda-extras']?.destacado?.trim() ?? '',
+  en: { nombre: '', resumen: '', descripcion: [] },
 });
+
+/** Campos ACF en inglés de todos los productos (WordPress REST, público). Si falla, no hay inglés. */
+async function textosEnIngles(): Promise<Map<number, Producto['en']>> {
+  const mapa = new Map<number, Producto['en']>();
+  try {
+    for (let pagina = 1; pagina <= 20; pagina++) {
+      const r = await fetch(`${tiendaUrl}/wp-json/wp/v2/product?per_page=100&page=${pagina}&_fields=id,acf`);
+      if (!r.ok) break;
+      const lista = (await r.json()) as { id: number; acf?: Record<string, unknown> }[];
+      for (const x of lista) {
+        const a = x.acf ?? {};
+        const txt = (v: unknown) => (typeof v === 'string' ? v.trim() : '');
+        mapa.set(x.id, {
+          nombre: txt(a.nombre_en),
+          resumen: sinHtml(txt(a.resumen_en)),
+          descripcion: txt(a.descripcion_en)
+            .split(/(?:\r?\n){2,}/)
+            .map((d) => sinHtml(d))
+            .filter(Boolean),
+        });
+      }
+      if (pagina >= Number(r.headers.get('X-WP-TotalPages') ?? 1)) break;
+    }
+  } catch {
+    /* sin textos en inglés: se usa el español */
+  }
+  return mapa;
+}
+
+/**
+ * El producto con sus textos en el idioma pedido: en inglés usa nombre_en / resumen_en /
+ * descripcion_en cuando existen y, si no, el texto en español.
+ */
+export function enIdioma(p: Producto, lang: 'es' | 'en'): Producto {
+  if (lang !== 'en') return p;
+  const en = p.en;
+  const nombre = en.nombre || p.nombre;
+  return {
+    ...p,
+    nombre,
+    resumen: en.resumen || (en.descripcion.length ? '' : p.resumen),
+    descripcion: en.descripcion.length ? en.descripcion : p.descripcion,
+    imagen: p.imagen && en.nombre ? { ...p.imagen, alt: p.imagen.alt === p.nombre ? nombre : p.imagen.alt } : p.imagen,
+  };
+}
 
 let cache: Promise<Producto[]> | undefined;
 
@@ -149,7 +200,10 @@ export function getProductos(): Promise<Producto[]> {
       // Si la tienda no responde, la compilación falla a propósito:
       // así no se publica un sitio sin precios y queda la versión anterior.
       if (!r.ok) throw new Error(`La tienda respondió ${r.status} en ${r.url}`);
-      return ((await r.json()) as StoreApiProducto[]).map(aProducto);
+      const productos = ((await r.json()) as StoreApiProducto[]).map(aProducto);
+      const ingles = await textosEnIngles();
+      for (const p of productos) p.en = ingles.get(p.id) ?? p.en;
+      return productos;
     },
   );
   return cache;

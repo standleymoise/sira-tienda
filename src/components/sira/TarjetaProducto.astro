@@ -8,7 +8,7 @@
 // Los atributos data-* sirven para filtrar en el navegador (tipo, colección, reversible, género).
 import { Image } from 'astro:assets';
 import type { Producto } from '../../data/tienda';
-import { claveFavorito } from '../../data/tienda';
+import { claveFavorito, enIdioma } from '../../data/tienda';
 import { rutasPara } from '../../data/rutas';
 import type { Idioma } from '../../i18n/idiomas';
 
@@ -21,8 +21,10 @@ interface Props {
   ancho?: number;
   lang?: Idioma;
 }
-const { producto: p, variante = 'lista', prioridad = false } = Astro.props;
+const { variante = 'lista', prioridad = false } = Astro.props;
 const lang: Idioma = Astro.props.lang ?? 'es';
+// Nombre y textos en el idioma de la página (inglés desde ACF si existe).
+const p = enIdioma(Astro.props.producto, lang);
 const rutas = rutasPara(lang);
 const t = {
   es: { guardar: `Guardar ${p.nombre} en favoritos`, verCara: 'Ver cara de la prenda', caraA: 'Cara A', caraB: 'Cara B', reversible: 'Reversible', agotado: 'Agotado' },

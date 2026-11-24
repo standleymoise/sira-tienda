@@ -7,7 +7,7 @@
 // Recibe `lang` por props: /en/favoritos/ reutiliza esta página con lang="en".
 import PaginaSira from '../layouts/PaginaSira.astro';
 import type { Idioma } from '../i18n/idiomas';
-import { getProductos, storeApiUrl, claveFavorito } from '../data/tienda';
+import { getProductos, storeApiUrl, claveFavorito, enIdioma } from '../data/tienda';
 import { rutasPara } from '../data/rutas';
 
 const { lang = 'es' } = Astro.props as { lang?: Idioma };
@@ -61,7 +61,7 @@ const tScript = {
 }[lang];
 
 // Catálogo de la última compilación: se muestra al instante y luego se actualiza en vivo.
-const iniciales = (await getProductos()).map((p) => ({
+const iniciales = (await getProductos()).map((x) => enIdioma(x, lang)).map((p) => ({
   id: p.id,
   clave: claveFavorito(p),
   url: rutas.producto(p.slug),
@@ -242,7 +242,8 @@ const iniciales = (await getProductos()).map((p) => ({
           id: p.id,
           clave: p.sku || `id-${p.id}`,
           url: p.slug ? plantilla.replace('__slug__', p.slug) : antes?.url || plantilla.replace('__slug__/', ''),
-          nombre: textoPlano(p.name),
+          // En inglés se conserva el nombre traducido de la compilación (ACF); WooCommerce lo da en español.
+          nombre: (document.documentElement.lang === 'en' && antes?.nombre) || textoPlano(p.name),
           precio: formato(p.prices.price, p.prices),
           variable,
           enStock: p.is_in_stock && (p.is_purchasable || variable),
