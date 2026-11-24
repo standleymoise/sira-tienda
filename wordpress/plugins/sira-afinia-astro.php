@@ -2,7 +2,7 @@
 /**
  * Plugin Name: SIRA – Pago con Afinia desde Astro
  * Description: Permite que el sitio SIRA en Astro lleve al cliente directo a la página segura de Afinia (sin pasar por la página de pago de WordPress) y que, al volver de Afinia, regrese al «Gracias» del sitio en Astro. No toca la tarjeta: el cobro sigue ocurriendo en Afinia y la confirmación llega por su webhook, como siempre.
- * Version: 1.0.0
+ * Version: 1.0.1
  * Requires Plugins: woocommerce
  *
  * Ruta: GET /wp-json/sira/v1/afinia/<pedido>?key=<clave del pedido>
@@ -37,6 +37,29 @@ function sira_afinia_ajuste( $pasarela, array $titulos ) {
 	return '';
 }
 
+/**
+ * Clave pública del comercio en Afinia (la misma que la página de pago de WordPress pone en el HTML).
+ * El plugin de Afinia no documenta el nombre del ajuste: se busca por la propiedad o por el campo
+ * cuyo nombre o título habla de «API» (y no es la «Security key» del webhook).
+ */
+function sira_afinia_apikey( $pasarela ) {
+	foreach ( array( 'apikey', 'api_key', 'apiKey', 'APIKey' ) as $prop ) {
+		if ( isset( $pasarela->$prop ) && '' !== (string) $pasarela->$prop ) {
+			return (string) $pasarela->$prop;
+		}
+	}
+	foreach ( (array) $pasarela->form_fields as $clave => $campo ) {
+		$texto = $clave . ' ' . ( isset( $campo['title'] ) ? wp_strip_all_tags( (string) $campo['title'] ) : '' );
+		if ( preg_match( '/api/i', $texto ) && ! preg_match( '/secur|segur|webhook/i', $texto ) ) {
+			$valor = (string) $pasarela->get_option( $clave );
+			if ( '' !== $valor ) {
+				return $valor;
+			}
+		}
+	}
+	return '';
+}
+
 add_action(
 	'rest_api_init',
 	function () {
@@ -63,7 +86,7 @@ add_action(
 						return new WP_Error( 'sira_afinia', 'Afinia no está activa.', array( 'status' => 503 ) );
 					}
 					$prueba = 'yes' === sira_afinia_ajuste( $pasarela, array( 'test mode', 'modo de prueba' ) );
-					$apikey = (string) sira_afinia_ajuste( $pasarela, array( 'api key' ) );
+					$apikey = sira_afinia_apikey( $pasarela );
 					if ( '' === $apikey ) {
 						return new WP_Error( 'sira_afinia', 'Afinia no tiene la clave configurada.', array( 'status' => 503 ) );
 					}
